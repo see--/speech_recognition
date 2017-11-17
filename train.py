@@ -7,6 +7,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from model import speech_model
 from audio import AudioConverter
+from input_data import get_label_name, data_gen
 from settings import get_settings
 from IPython import embed
 
@@ -17,19 +18,6 @@ def sanity_check(sampling_rate):
     sys.exit(0)
 
 
-def get_label_name(fn):
-  return fn.split('/')[-2]
-
-
-def fn2int(fn, label2int_mapping):
-  label_name = get_label_name(fn)
-  if label_name not in label2int_mapping:
-    label = label2int_mapping['unknown']
-  else:
-    label = label2int_mapping[label_name]
-  return label
-
-
 def border_pad(arr, padded_size=16000):
   if len(arr) == padded_size:
     return arr
@@ -38,22 +26,6 @@ def border_pad(arr, padded_size=16000):
   pad_right = missing - pad_left
   padded_arr = np.pad(arr, (pad_left, pad_right), 'constant')
   return padded_arr
-
-
-def data_gen(fns, batch_size, label2int_mapping,
-             ac, sess, fingerprint_size=3920):
-  X_batch = np.zeros((batch_size, fingerprint_size), dtype=np.float32)
-  y_batch = -1 * np.ones(batch_size, dtype=np.int32)
-  batch_counter = 0
-  while True:
-    np.random.shuffle(fns)
-    for fn in fns:
-      X_batch[batch_counter, :] = ac.load(fn, sess).flatten()
-      y_batch[batch_counter] = fn2int(fn, label2int_mapping)
-      batch_counter += 1
-      if batch_counter == batch_size:
-        batch_counter = 0
-        yield X_batch, y_batch
 
 
 def remove_background_fns(fns, background_label='_background_noise_'):
@@ -121,10 +93,12 @@ if __name__ == '__main__':
       fns, test_size=0.2, random_state=seed)
   train_gen = data_gen(train_fns, batch_size, label2int_mapping, ac, sess)
   val_gen = data_gen(val_fns, batch_size, label2int_mapping, ac, sess)
-  model = speech_model(fingerprint_size)
+  model = speech_model('snn', fingerprint_size)
+  model.load_weights('final.hdf5')
   model.fit_generator(
       train_gen, len(train_fns) // batch_size,
       epochs=20, verbose=1, callbacks=[],
       validation_data=val_gen, validation_steps=len(val_fns) // batch_size)
+  model.save_weights('final_002.hdf5')
   eval_res = model.evaluate_generator(val_gen, len(val_fns) // batch_size)
   print(eval_res)
