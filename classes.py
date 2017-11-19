@@ -1,3 +1,6 @@
+from input_data import prepare_words_list
+
+
 def get_classes(wanted_only=False):
   if wanted_only:
     classes = 'stop down off right up go on yes left no'
@@ -8,3 +11,17 @@ def get_classes(wanted_only=False):
     classes = classes.split(' ')
     assert len(classes) == 30
   return classes
+
+
+def get_int2label(wanted_only=False):
+  classes = get_classes(wanted_only=wanted_only)
+  classes = prepare_words_list(classes)
+  int2label = {i: l for i, l in enumerate(classes)}
+  return int2label
+
+
+def get_label2int(wanted_only=False):
+  classes = get_classes(wanted_only=wanted_only)
+  classes = prepare_words_list(classes)
+  label2int = {l: i for i, l in enumerate(classes)}
+  return label2int

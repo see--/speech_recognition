@@ -1,5 +1,6 @@
 from scipy.io import wavfile as wf
 from keras import backend as K
+from keras.callbacks import ModelCheckpoint
 from tensorflow.contrib.framework.python.ops import audio_ops as contrib_audio
 from glob import glob
 import sys
@@ -44,22 +45,23 @@ if __name__ == '__main__':
       silence_percentage=10.0,
       unknown_percentage=10.0,
       wanted_words=classes,
-      validation_percentage=20.0,
+      validation_percentage=10.0,
       testing_percentage=0.0,
       model_settings=model_settings,
       compute_mfcc=compute_mfcc)
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training')
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation')
   model = speech_model(
-      'simple',
+      'conv_2d_fast',
       model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
       num_classes=model_settings['label_count'])
+  # embed()
   model.fit_generator(
       train_gen, ap.set_size('training') // batch_size,
-      epochs=20, verbose=1, callbacks=[],
+      epochs=20, verbose=1, callbacks=[ModelCheckpoint(
+          'checkpoints/ep-{epoch:03d}-val_loss-{val_loss:.3f}.hdf5')],
       validation_data=val_gen,
       validation_steps=ap.set_size('validation') // batch_size)
-  model.save_weights('final_004.hdf5')
   eval_res = model.evaluate_generator(
       val_gen, ap.set_size('validation') // batch_size)
   print(eval_res)
