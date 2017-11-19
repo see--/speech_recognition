@@ -1,14 +1,9 @@
-from scipy.io import wavfile as wf
 from keras import backend as K
 from keras.callbacks import ModelCheckpoint
-from tensorflow.contrib.framework.python.ops import audio_ops as contrib_audio
-from glob import glob
-import sys
-import numpy as np
 from model import speech_model, prepare_model_settings
 from input_data import AudioProcessor, prepare_words_list
 from classes import get_classes
-from IPython import embed
+from IPython import embed  # noqa
 
 
 def data_gen(audio_processor, sess,

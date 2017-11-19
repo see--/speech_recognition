@@ -10,7 +10,7 @@ from tqdm import tqdm
 from model import speech_model, prepare_model_settings
 from input_data import prepare_words_list
 from classes import get_classes, get_int2label
-from IPython import embed
+from IPython import embed  # noqa
 
 
 if __name__ == '__main__':
@@ -46,7 +46,7 @@ if __name__ == '__main__':
       'conv_2d_fast',
       model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
       num_classes=model_settings['label_count'])
-  model.load_weights('checkpoints/ep-19-val_loss-0.31.hdf5')
+  model.load_weights('checkpoints_005/ep-036-val_loss-0.295.hdf5')
   fns, labels = [], []
   batch_counter = 0
   X_batch = []
@@ -72,8 +72,11 @@ if __name__ == '__main__':
     pred_labels = [int2label[int(p)] for p in pred]
     pred_labels = [
         pl if pl in wanted_words else 'unknown' for pl in pred_labels]
+    # map _silence_ to silence
+    pred_labels = [
+        pl if pl != '_silence_' else 'silence' for pl in pred_labels]
     labels.extend(pred_labels)
 
   submission = pd.DataFrame({'fname': fns, 'label': labels})
-  submission.to_csv('submission_004.csv', index=False, compression=None)
+  submission.to_csv('submission_005.csv', index=False, compression=None)
   print("Done!")
