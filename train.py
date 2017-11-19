@@ -4,101 +4,59 @@ from tensorflow.contrib.framework.python.ops import audio_ops as contrib_audio
 from glob import glob
 import sys
 import numpy as np
-from sklearn.model_selection import train_test_split
-from model import speech_model
-from audio import AudioConverter
-from input_data import get_label_name, data_gen
-from settings import get_settings
+from model import speech_model, prepare_model_settings
+from input_data import AudioProcessor, prepare_words_list
+from classes import get_classes
 from IPython import embed
 
 
-def sanity_check(sampling_rate):
-  if sampling_rate != 16000:
-    print("Error invalid sampling rate: %s" % sampling_rate)
-    sys.exit(0)
-
-
-def border_pad(arr, padded_size=16000):
-  if len(arr) == padded_size:
-    return arr
-  missing = padded_size - len(arr)
-  pad_left = missing // 2
-  pad_right = missing - pad_left
-  padded_arr = np.pad(arr, (pad_left, pad_right), 'constant')
-  return padded_arr
-
-
-def remove_background_fns(fns, background_label='_background_noise_'):
-  real_fns, background_fns = [], []
-  for fn in fns:
-    if background_label in fn:
-      background_fns.append(fn)
-    else:
-      real_fns.append(fn)
-  return real_fns, background_fns
-
-
-def class_counts(fns, label2int_mapping):
-  counts = {k: 0 for k, v in label2int_mapping.items()}
-  for fn in fns:
-    label_name = get_label_name(fn)
-    if label_name not in counts:
-      counts['unknown'] += 1
-    else:
-      counts[label_name] += 1
-  return counts
-
-
-def balance_classes(fns, label2int_mapping):
-  unknown_fns = [
-      fn for fn in fns if get_label_name(fn) not in label2int_mapping]
-  counts = class_counts(fns, label2int_mapping)
-  print(counts)
-  known_counts = [v for k, v in counts.items() if k != 'unknown']
-  unknown_fns = np.random.choice(
-      unknown_fns, max(known_counts), replace=False)
-
-  balanced_fns = []
-  for fn in fns:
-    label_name = get_label_name(fn)
-    if label_name not in counts:
-      if fn in unknown_fns:
-        balanced_fns.append(fn)
-    else:
-      balanced_fns.append(fn)
-  return balanced_fns
+def data_gen(audio_processor, sess,
+             batch_size=128, background_frequency=0.8,
+             background_volume_range=0.1, time_shift=(100.0 * 16000.0) / 1000,
+             mode='validation'):
+  while True:
+    X, y = audio_processor.get_data(
+        how_many=batch_size, offset=0,
+        background_frequency=background_frequency,
+        background_volume_range=background_volume_range,
+        time_shift=time_shift, mode=mode, sess=sess)
+    yield X, y
 
 
 # running_mean: -0.8, running_std: 7.0
+# mfcc running_mean: -0.67, running_std: 7.45
 # np.log(11) ~ 2.4
 if __name__ == '__main__':
-  seed = 42
   sess = K.get_session()
-  ac = AudioConverter()
-  np.random.seed(seed)
-  settings = get_settings
-  batch_size = 64
-  fingerprint_size = 3920
-  label2int_mapping = {
-      'yes': 0, 'no': 1, 'up': 2, 'down': 3,
-      'left': 4, 'right': 5, 'on': 6, 'off': 7,
-      'stop': 8, 'go': 9,
-      'unknown': 10, 'silence': 11
-  }
-  int2label_mapping = {v: k for k, v in label2int_mapping.items()}
-  fns = sorted(glob('data/train/audio/*/*.wav'))
-  fns, background_fns = remove_background_fns(fns)
-  fns = balance_classes(fns, label2int_mapping)
-  train_fns, val_fns = train_test_split(
-      fns, test_size=0.2, random_state=seed)
-  train_gen = data_gen(train_fns, batch_size, label2int_mapping, ac, sess)
-  val_gen = data_gen(val_fns, batch_size, label2int_mapping, ac, sess)
-  model = speech_model('snn', fingerprint_size)
-  model.load_weights('final.hdf5')
+  compute_mfcc = True
+  sample_rate = 16000
+  batch_size = 128
+  classes = get_classes(wanted_only=False)
+  model_settings = prepare_model_settings(
+      label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
+      clip_duration_ms=1000, window_size_ms=30.0, window_stride_ms=10.0,
+      dct_coefficient_count=40)
+  ap = AudioProcessor(
+      data_dir='data/train/audio',
+      silence_percentage=10.0,
+      unknown_percentage=10.0,
+      wanted_words=classes,
+      validation_percentage=20.0,
+      testing_percentage=0.0,
+      model_settings=model_settings,
+      compute_mfcc=compute_mfcc)
+  train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training')
+  val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation')
+  model = speech_model(
+      'simple',
+      model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
+      num_classes=model_settings['label_count'])
   model.fit_generator(
-      train_gen, len(train_fns) // batch_size,
+      train_gen, ap.set_size('training') // batch_size,
       epochs=20, verbose=1, callbacks=[],
-      validation_data=val_gen, validation_steps=len(val_fns) // batch_size)
+      validation_data=val_gen,
+      validation_steps=ap.set_size('validation') // batch_size)
   model.save_weights('final_002.hdf5')
-  eval_res = model.evaluate_generator(val_gen, len(val_fns) // batch_size)
+  eval_res = model.evaluate_generator(
+      val_gen, ap.set_size('validation') // batch_size)
   print(eval_res)
