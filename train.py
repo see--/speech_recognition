@@ -31,7 +31,7 @@ def data_gen(audio_processor, sess,
 # np.log(32) ~ 3.5
 if __name__ == '__main__':
   sess = K.get_session()
-  compute_mfcc = False
+  compute_mfcc = True
   sample_rate = 16000
   batch_size = 64
   classes = get_classes(wanted_only=False)
@@ -59,7 +59,7 @@ if __name__ == '__main__':
       epochs=20, verbose=1, callbacks=[],
       validation_data=val_gen,
       validation_steps=ap.set_size('validation') // batch_size)
-  model.save_weights('final_002.hdf5')
+  model.save_weights('final_004.hdf5')
   eval_res = model.evaluate_generator(
       val_gen, ap.set_size('validation') // batch_size)
   print(eval_res)

@@ -1,5 +1,6 @@
 import keras
-from keras.layers import Dense, Input, Lambda
+from keras.layers import Dense, Input, Lambda, Conv1D, AveragePooling1D
+from keras.layers import GlobalAveragePooling1D, Reshape, Flatten
 from keras.layers.noise import AlphaDropout
 from keras.models import Model
 import tensorflow as tf
@@ -51,11 +52,53 @@ def simple_model(input_size=16000, num_classes=11):
   return model
 
 
+def conv_1d_model(input_size=16000, num_classes=11):
+  """ Creates a 1D model for temporal data. Note: Use only
+  with compute_mfcc = False (e.g. raw data).
+  Args:
+    input_size: How big the input vector is.
+    num_classes: How many classes are to be recognized.
+  Returns:
+    Compiled keras model
+  """
+  input_layer = Input(shape=[input_size])
+  x = input_layer
+  x = Reshape([-1, 1])(x)
+  x = Preprocess(x)
+
+  def _reduce_conv(x, num_filters, k, strides=2):
+    x = Conv1D(num_filters, k, padding='same', activation='relu')(x)
+    x = AveragePooling1D(pool_size=strides)(x)
+    return x
+
+  def _context_conv(x, num_filters, dilation_rate):
+    x = Conv1D(num_filters, 3, padding='same',
+               dilation_rate=dilation_rate, activation='relu')(x)
+    return x
+
+  x = _reduce_conv(x, 8, 128, strides=4)
+  x = _reduce_conv(x, 16, 64, strides=4)
+  x = _reduce_conv(x, 32, 32)
+  x = _reduce_conv(x, 64, 16)
+  x = _context_conv(x, 1, 16)
+  x = Flatten()(x)
+  x = Dense(num_classes, activation='softmax')(x)
+
+  model = Model(input_layer, x, name='speech_model')
+  model.compile(
+      optimizer=keras.optimizers.SGD(lr=0.1, momentum=0.9),
+      loss=keras.losses.categorical_crossentropy,
+      metrics=[keras.metrics.categorical_accuracy])
+  return model
+
+
 def speech_model(model_type, input_size, num_classes=11):
   if model_type == 'simple':
     return simple_model(input_size, num_classes)
   elif model_type == 'snn':
     return snn_model(input_size, num_classes)
+  elif model_type == 'conv_1d_model':
+    return conv_1d_model(input_size, num_classes)
   else:
     raise ValueError("Invalid model")
 
