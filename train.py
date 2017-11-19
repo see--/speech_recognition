@@ -25,12 +25,15 @@ def data_gen(audio_processor, sess,
 
 # running_mean: -0.8, running_std: 7.0
 # mfcc running_mean: -0.67, running_std: 7.45
+# background_clamp running_mean: -0.00064, running_std: 0.0774
 # np.log(11) ~ 2.4
+# np.log(12) ~ 2.5
+# np.log(32) ~ 3.5
 if __name__ == '__main__':
   sess = K.get_session()
-  compute_mfcc = True
+  compute_mfcc = False
   sample_rate = 16000
-  batch_size = 128
+  batch_size = 64
   classes = get_classes(wanted_only=False)
   model_settings = prepare_model_settings(
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,

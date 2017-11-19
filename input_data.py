@@ -337,10 +337,10 @@ class AudioProcessor(object):
     background_mul = tf.multiply(self.background_data_placeholder_,
                                  self.background_volume_placeholder_)
     background_add = tf.add(background_mul, sliced_foreground)
-    background_clamp = tf.clip_by_value(background_add, -1.0, 1.0)
+    self.background_clamp_ = tf.clip_by_value(background_add, -1.0, 1.0)
     # Run the spectrogram and MFCC ops to get a 2D 'fingerprint' of the audio.
     spectrogram = contrib_audio.audio_spectrogram(
-        background_clamp,
+        self.background_clamp_,
         window_size=model_settings['window_size_samples'],
         stride=model_settings['window_stride_samples'],
         magnitude_squared=True)
@@ -392,7 +392,9 @@ class AudioProcessor(object):
     else:
       sample_count = max(0, min(how_many, len(candidates) - offset))
     # Data and labels will be populated and returned.
-    data = np.zeros((sample_count, model_settings['fingerprint_size']))
+    data_dim = model_settings['fingerprint_size'] \
+        if self.compute_mfcc else model_settings['desired_samples']
+    data = np.zeros((sample_count, data_dim))
     labels = np.zeros((sample_count, model_settings['label_count']))
     desired_samples = model_settings['desired_samples']
     use_background = self.background_data and (mode == 'training')
@@ -446,7 +448,12 @@ class AudioProcessor(object):
       else:
         input_dict[self.foreground_volume_placeholder_] = 1
       # Run the graph to produce the output audio.
-      data[i - offset, :] = sess.run(self.mfcc_, feed_dict=input_dict).flatten()
+      if self.compute_mfcc:
+        data[i - offset, :] = sess.run(
+            self.mfcc_, feed_dict=input_dict).flatten()
+      else:
+        data[i - offset, :] = sess.run(
+            self.background_clamp_, feed_dict=input_dict).flatten()
       label_index = self.word_to_index[sample['label']]
       labels[i - offset, label_index] = 1
     return data, labels
