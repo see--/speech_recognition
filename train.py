@@ -1,5 +1,5 @@
 from keras import backend as K
-from keras.callbacks import ModelCheckpoint
+from keras.callbacks import ModelCheckpoint, LearningRateScheduler
 from model import speech_model, prepare_model_settings
 from input_data import AudioProcessor, prepare_words_list
 from classes import get_classes
@@ -53,8 +53,10 @@ if __name__ == '__main__':
   # embed()
   model.fit_generator(
       train_gen, ap.set_size('training') // batch_size,
-      epochs=20, verbose=1, callbacks=[ModelCheckpoint(
-          'checkpoints/ep-{epoch:03d}-val_loss-{val_loss:.3f}.hdf5')],
+      epochs=40, verbose=1, callbacks=[
+          ModelCheckpoint(
+              'checkpoints_005/ep-{epoch:03d}-val_loss-{val_loss:.3f}.hdf5'),
+          LearningRateScheduler(lambda ep: 0.005 if ep < 20 else 0.0005)],
       validation_data=val_gen,
       validation_steps=ap.set_size('validation') // batch_size)
   eval_res = model.evaluate_generator(
