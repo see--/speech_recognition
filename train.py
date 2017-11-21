@@ -1,5 +1,6 @@
 from keras import backend as K
 from keras.callbacks import ModelCheckpoint, LearningRateScheduler
+from keras.callbacks import TensorBoard
 from model import speech_model, prepare_model_settings
 from input_data import AudioProcessor, prepare_words_list
 from classes import get_classes
@@ -17,6 +18,16 @@ def data_gen(audio_processor, sess,
         background_volume_range=background_volume_range,
         time_shift=time_shift, mode=mode, sess=sess)
     yield X, y
+
+
+def lr_schedule(ep):
+  base_lr = 0.001
+  if ep <= 20:
+    return base_lr
+  elif 20 < ep <= 30:
+    return base_lr / 5
+  else:
+    return 0.001 / 10
 
 
 # running_mean: -0.8, running_std: 7.0
@@ -47,7 +58,7 @@ if __name__ == '__main__':
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training')
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation')
   model = speech_model(
-      'conv_2d_fast',
+      'conv_2d_mobile',
       model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
       num_classes=model_settings['label_count'])
   # embed()
@@ -55,8 +66,9 @@ if __name__ == '__main__':
       train_gen, ap.set_size('training') // batch_size,
       epochs=40, verbose=1, callbacks=[
           ModelCheckpoint(
-              'checkpoints_005/ep-{epoch:03d}-val_loss-{val_loss:.3f}.hdf5'),
-          LearningRateScheduler(lambda ep: 0.005 if ep < 20 else 0.0005)],
+              'checkpoints_009/ep-{epoch:03d}-val_loss-{val_loss:.3f}.hdf5'),
+          LearningRateScheduler(lr_schedule),
+          TensorBoard(log_dir='logs_009')],
       validation_data=val_gen,
       validation_steps=ap.set_size('validation') // batch_size)
   eval_res = model.evaluate_generator(

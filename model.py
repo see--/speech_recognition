@@ -4,6 +4,7 @@ from keras.layers import Reshape, Flatten
 from keras.layers import Conv2D, MaxPool2D
 from keras.layers import BatchNormalization, Activation
 from keras.layers import GlobalAveragePooling2D
+from keras.layers import Dropout, Add
 from keras.layers.noise import AlphaDropout
 from keras.models import Model
 import tensorflow as tf
@@ -17,6 +18,9 @@ def preprocess(x):
 
 
 Preprocess = Lambda(preprocess)
+
+
+Relu6 = Lambda(lambda x: tf.nn.relu6(x))
 
 
 def snn_model(input_size=16000, num_classes=11):
@@ -128,6 +132,107 @@ def conv_2d_model(input_size=16000, num_classes=11):
   return model
 
 
+def conv_2d_mobile_model(input_size=16000, num_classes=11):
+  """ Creates a 1D model for temporal data. Note: Use only
+  with compute_mfcc = True. This is the keras version of:
+  https://github.com/tensorflow/tensorflow/blob/master/tensorflow/examples/speech_commands/models.py#L165-L270  # noqa
+  Args:
+    input_size: How big the input vector is.
+    num_classes: How many classes are to be recognized.
+  Returns:
+    Compiled keras model
+  """
+  # TODO(see--): Allow variable sized frequency_size & time_size
+  time_size = 98
+  frequency_size = 40
+  input_layer = Input(shape=[input_size])
+  x = input_layer
+  x = Reshape([time_size, frequency_size, 1])(x)
+  x = Preprocess(x)
+
+  def _conv_bn_relu6(x, num_filter, kernel=(3, 3), strides=(1, 1)):
+    x = Conv2D(num_filter, kernel, padding='same',
+               strides=strides)(x)
+    x = BatchNormalization()(x)
+    x = Relu6(x)
+    return x
+
+  x = _conv_bn_relu6(x, 32, strides=2)  # (49, 20)
+  x = _conv_bn_relu6(x, 32)  # (49, 20)
+  x = Dropout(0.05)(x)
+  x = _conv_bn_relu6(x, 64, strides=2)  # (25, 10)
+  x = _conv_bn_relu6(x, 64)  # (25, 10)
+  x = Dropout(0.05)(x)
+  x = _conv_bn_relu6(x, 128, strides=2)  # (13, 5)
+  x = _conv_bn_relu6(x, 128)  # (13, 5)
+  x = Dropout(0.05)(x)
+  x = _conv_bn_relu6(x, 256, strides=2)  # (7, 3)
+  x = _conv_bn_relu6(x, 256)  # (7, 3)
+  x = Dropout(0.05)(x)
+
+  x = GlobalAveragePooling2D()(x)
+  x = Dropout(0.1)(x)
+  x = Dense(num_classes, activation='softmax')(x)
+
+  model = Model(input_layer, x, name='speech_model')
+  model.compile(
+      optimizer=keras.optimizers.SGD(lr=0.001, momentum=0.95),
+      loss=keras.losses.categorical_crossentropy,
+      metrics=[keras.metrics.categorical_accuracy])
+  return model
+
+
+def conv_2d_residual_model(input_size=16000, num_classes=11):
+  """ Creates a 1D model for temporal data. Note: Use only
+  with compute_mfcc = True. This is the keras version of:
+  https://github.com/tensorflow/tensorflow/blob/master/tensorflow/examples/speech_commands/models.py#L165-L270  # noqa
+  Args:
+    input_size: How big the input vector is.
+    num_classes: How many classes are to be recognized.
+  Returns:
+    Compiled keras model
+  """
+  # TODO(see--): Allow variable sized frequency_size & time_size
+  time_size = 98
+  frequency_size = 40
+  input_layer = Input(shape=[input_size])
+  x = input_layer
+  x = Reshape([time_size, frequency_size, 1])(x)
+  x = Preprocess(x)
+
+  def _conv_bn_relu6(x, num_filter, kernel=(3, 3), strides=(1, 1)):
+    x = Conv2D(num_filter, kernel, padding='same',
+               strides=strides)(x)
+    x = BatchNormalization()(x)
+    x = Relu6(x)
+    return x
+
+  def _conv_bn_relu6_skip(x, num_filter, kernel=(3, 3), strides=(1, 1)):
+    x_skipped = _conv_bn_relu6(x, num_filter, kernel=kernel, strides=strides)
+    x = Add()([x, x_skipped])
+    return x
+
+  x = _conv_bn_relu6(x, 16, strides=2)  # (49, 20)
+  x = _conv_bn_relu6_skip(x, 16)  # (49, 20)
+  x = _conv_bn_relu6(x, 32, strides=2)  # (25, 10)
+  x = _conv_bn_relu6_skip(x, 32)  # (25, 10)
+  x = _conv_bn_relu6(x, 64, strides=2)  # (13, 5)
+  x = _conv_bn_relu6_skip(x, 64)  # (13, 5)
+  x = _conv_bn_relu6(x, 128, strides=2)  # (7, 3)
+  x = _conv_bn_relu6_skip(x, 128)  # (7, 3)
+
+  x = GlobalAveragePooling2D()(x)
+  x = Dropout(0.05)(x)
+  x = Dense(num_classes, activation='softmax')(x)
+
+  model = Model(input_layer, x, name='speech_model')
+  model.compile(
+      optimizer=keras.optimizers.SGD(lr=0.001, momentum=0.9),
+      loss=keras.losses.categorical_crossentropy,
+      metrics=[keras.metrics.categorical_accuracy])
+  return model
+
+
 def conv_2d_fast_model(input_size=16000, num_classes=11):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = True. This is the keras version of:
@@ -159,9 +264,9 @@ def conv_2d_fast_model(input_size=16000, num_classes=11):
     return x
 
   x = _conv_bn_pool(x, 16, (11, 5), (2, 1))  # (49, 20)
-  x = _conv_bn_pool(x, 32, (5, 3), (2, 1))  # (24, 10)
-  x = _conv_bn_pool(x, 64, (3, 3), (1, 1))  # (12, 5)
-  x = _conv_bn_pool(x, 128, (3, 3), (1, 1))  # (6, 2)
+  x = _conv_bn_pool(x, 32, (5, 3), (2, 1))  # (25, 10)
+  x = _conv_bn_pool(x, 64, (3, 3), (1, 1))  # (13, 5)
+  x = _conv_bn_pool(x, 128, (3, 3), (1, 1))  # (7, 3)
   x = GlobalAveragePooling2D()(x)
   x = Dense(num_classes, activation='softmax')(x)
 
@@ -184,8 +289,12 @@ def speech_model(model_type, input_size, num_classes=11):
     return conv_2d_model(input_size, num_classes)
   elif model_type == 'conv_2d_fast':
     return conv_2d_fast_model(input_size, num_classes)
+  elif model_type == 'conv_2d_mobile':
+    return conv_2d_mobile_model(input_size, num_classes)
+  elif model_type == 'conv_2d_residual':
+    return conv_2d_residual_model(input_size, num_classes)
   else:
-    raise ValueError("Invalid model")
+    raise ValueError("Invalid model: %s" % model_type)
 
 
 # from here: https://github.com/tensorflow/tensorflow/blob/master/tensorflow/examples/speech_commands/models.py  # noqa

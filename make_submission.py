@@ -43,14 +43,14 @@ if __name__ == '__main__':
       wav_decoder.sample_rate,
       dct_coefficient_count=model_settings['dct_coefficient_count'])
   model = speech_model(
-      'conv_2d_fast',
+      'conv_2d_mobile',
       model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
       num_classes=model_settings['label_count'])
-  model.load_weights('checkpoints_005/ep-036-val_loss-0.295.hdf5')
+  model.load_weights('checkpoints_009/ep-039-val_loss-0.382.hdf5')
   fns, labels = [], []
   batch_counter = 0
   X_batch = []
-  for test_fn in tqdm(test_fns[:]):
+  for test_fn in tqdm(test_fns[:100]):
     fns.append(os.path.basename(test_fn))
     mfcc_val = sess.run(mfcc, {wav_filename_placeholder: test_fn})
     X_batch.append(mfcc_val.flatten())
@@ -78,5 +78,5 @@ if __name__ == '__main__':
     labels.extend(pred_labels)
 
   submission = pd.DataFrame({'fname': fns, 'label': labels})
-  submission.to_csv('submission_005.csv', index=False, compression=None)
+  submission.to_csv('submission_007.csv', index=False, compression=None)
   print("Done!")
