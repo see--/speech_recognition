@@ -8,8 +8,8 @@ from IPython import embed  # noqa
 
 
 def data_gen(audio_processor, sess,
-             batch_size=128, background_frequency=0.8,
-             background_volume_range=0.1, time_shift=(100.0 * 16000.0) / 1000,
+             batch_size=128, background_frequency=0.5,
+             background_volume_range=0.2, time_shift=(200.0 * 16000.0) / 1000,
              mode='validation'):
   while True:
     X, y = audio_processor.get_data(
