@@ -85,6 +85,9 @@ def which_set(filename, validation_percentage, testing_percentage):
   # We want to ignore anything after '_nohash_' in the file name when
   # deciding which set to put a wav in, so the data set creator has a way of
   # grouping wavs that are close variations of each other.
+  # always add pseudo labels to training
+  if base_name.find('_nohash_') == -1:
+    return 'training'
   hash_name = re.sub(r'_nohash_.*$', '', base_name)
   # This looks a bit magical, but we need to decide whether this file should
   # go into the training, testing, or validation sets, and we want to keep
@@ -151,13 +154,14 @@ def save_wav_file(filename, wav_data, sample_rate):
 class AudioProcessor(object):
   """Handles loading, partitioning, and preparing audio training data."""
 
-  def __init__(self, data_dir, silence_percentage, unknown_percentage,
+  def __init__(self, data_dirs, silence_percentage, unknown_percentage,
                wanted_words, validation_percentage, testing_percentage,
                model_settings, compute_mfcc=False):
-    self.data_dir = data_dir
+    self.data_dirs = data_dirs
     self.compute_mfcc = compute_mfcc
     self.model_settings = model_settings
-    self.maybe_download_and_extract_dataset(data_dir)
+    for data_dir in self.data_dirs:
+      self.maybe_download_and_extract_dataset(data_dir)
     self.prepare_data_index(silence_percentage, unknown_percentage,
                             wanted_words, validation_percentage,
                             testing_percentage)
@@ -204,28 +208,31 @@ class AudioProcessor(object):
     unknown_index = {'validation': [], 'testing': [], 'training': []}
     all_words = {}
     # Look through all the subfolders to find audio samples
-    search_path = os.path.join(self.data_dir, '*', '*.wav')
-    for wav_path in gfile.Glob(search_path):
-      word = re.search('.*/([^/]+)/.*.wav', wav_path).group(1).lower()
-      # Treat the '_background_noise_' folder as a special case, since we expect
-      # it to contain long audio samples we mix in to improve training.
-      if word == BACKGROUND_NOISE_DIR_NAME:
-        continue
-      all_words[word] = True
-      set_index = which_set(wav_path, validation_percentage, testing_percentage)
-      # If it's a known class, store its detail, otherwise add it to the list
-      # we'll use to train the unknown label.
-      if word in wanted_words_index:
-        self.data_index[set_index].append({'label': word, 'file': wav_path})
-      else:
-        unknown_index[set_index].append({'label': word, 'file': wav_path})
-    if not all_words:
-      raise Exception('No .wavs found at ' + search_path)
-    for index, wanted_word in enumerate(wanted_words):
-      if wanted_word not in all_words:
-        raise Exception('Expected to find ' + wanted_word +
-                        ' in labels but only found ' +
-                        ', '.join(all_words.keys()))
+    for data_dir in self.data_dirs:
+      search_path = os.path.join(data_dir, '*', '*.wav')
+      for wav_path in gfile.Glob(search_path):
+        word = re.search('.*/([^/]+)/.*.wav', wav_path).group(1).lower()
+        # Treat the '_background_noise_' folder as a special case,
+        # since we expect it to contain long audio samples we mix in
+        # to improve training.
+        if word == BACKGROUND_NOISE_DIR_NAME:
+          continue
+        all_words[word] = True
+        set_index = which_set(
+          wav_path, validation_percentage, testing_percentage)
+        # If it's a known class, store its detail, otherwise add it to the list
+        # we'll use to train the unknown label.
+        if word in wanted_words_index:
+          self.data_index[set_index].append({'label': word, 'file': wav_path})
+        else:
+          unknown_index[set_index].append({'label': word, 'file': wav_path})
+      if not all_words:
+        raise Exception('No .wavs found at ' + search_path)
+      for index, wanted_word in enumerate(wanted_words):
+        if wanted_word not in all_words:
+          raise Exception('Expected to find ' + wanted_word +
+                          ' in labels but only found ' +
+                          ', '.join(all_words.keys()))
     # We need an arbitrary file to load as the input for the silence samples.
     # It's multiplied by zero later, so the content doesn't matter.
     silence_wav_path = self.data_index['training'][0]['file']
@@ -273,14 +280,14 @@ class AudioProcessor(object):
       Exception: If files aren't found in the folder.
     """
     self.background_data = []
-    background_dir = os.path.join(self.data_dir, BACKGROUND_NOISE_DIR_NAME)
+    background_dir = os.path.join(self.data_dirs[0], BACKGROUND_NOISE_DIR_NAME)
     if not os.path.exists(background_dir):
       return self.background_data
     with tf.Session(graph=tf.Graph()) as sess:
       wav_filename_placeholder = tf.placeholder(tf.string, [])
       wav_loader = io_ops.read_file(wav_filename_placeholder)
       wav_decoder = contrib_audio.decode_wav(wav_loader, desired_channels=1)
-      search_path = os.path.join(self.data_dir, BACKGROUND_NOISE_DIR_NAME,
+      search_path = os.path.join(self.data_dirs[0], BACKGROUND_NOISE_DIR_NAME,
                                  '*.wav')
       for wav_path in gfile.Glob(search_path):
         wav_data = sess.run(

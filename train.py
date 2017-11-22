@@ -39,6 +39,10 @@ def lr_schedule(ep):
 # np.log(32) ~ 3.5
 if __name__ == '__main__':
   sess = K.get_session()
+  data_dirs = ['data/train/audio']
+  add_pseudo = True
+  if add_pseudo:
+    data_dirs.append('data/pseudo/audio')
   compute_mfcc = False
   sample_rate = 16000
   batch_size = 64
@@ -48,7 +52,7 @@ if __name__ == '__main__':
       clip_duration_ms=1000, window_size_ms=30.0, window_stride_ms=10.0,
       dct_coefficient_count=40)
   ap = AudioProcessor(
-      data_dir='data/train/audio',
+      data_dirs=data_dirs,
       silence_percentage=10.0,
       unknown_percentage=10.0,
       wanted_words=classes,
@@ -62,7 +66,7 @@ if __name__ == '__main__':
       'conv_1d_time',
       model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
       num_classes=model_settings['label_count'])
-  # embed()
+  embed()
   model.fit_generator(
       train_gen, ap.set_size('training') // batch_size,
       epochs=40, verbose=1, callbacks=[
