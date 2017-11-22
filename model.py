@@ -17,8 +17,8 @@ def preprocess(x):
 
 
 def preprocess_raw(x):
-  x = K.clip(x, -0.08, 0.08)
-  x = (x + 0.00064) / 0.0774
+  # x = K.clip(x, -0.08, 0.08)
+  # x = (x + 0.00064) / 0.0774
   return x
 
 
