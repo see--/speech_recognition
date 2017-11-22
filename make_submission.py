@@ -16,7 +16,7 @@ from IPython import embed  # noqa
 if __name__ == '__main__':
   test_fns = sorted(glob('data/test/audio/*.wav'))
   sess = K.get_session()
-  compute_mfcc = True
+  compute_mfcc = False
   sample_rate = 16000
   batch_size = 32
   wanted_words = prepare_words_list(get_classes(wanted_only=True))
@@ -43,17 +43,22 @@ if __name__ == '__main__':
       wav_decoder.sample_rate,
       dct_coefficient_count=model_settings['dct_coefficient_count'])
   model = speech_model(
-      'conv_2d_mobile',
+      'conv_1d',
       model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
       num_classes=model_settings['label_count'])
-  model.load_weights('checkpoints_009/ep-039-val_loss-0.382.hdf5')
+  model.load_weights('checkpoints_010/ep-025-val_loss-0.582.hdf5')
   fns, labels = [], []
   batch_counter = 0
   X_batch = []
-  for test_fn in tqdm(test_fns[:100]):
+  for test_fn in tqdm(test_fns[:]):
     fns.append(os.path.basename(test_fn))
-    mfcc_val = sess.run(mfcc, {wav_filename_placeholder: test_fn})
-    X_batch.append(mfcc_val.flatten())
+    if compute_mfcc:
+      mfcc_val = sess.run(mfcc, {wav_filename_placeholder: test_fn})
+      X_batch.append(mfcc_val.flatten())
+    else:
+      raw_val = sess.run(clamped, {wav_filename_placeholder: test_fn})
+      X_batch.append(raw_val.flatten())
+
     batch_counter += 1
     if batch_counter == batch_size:
       pred = model.predict(np.float32(X_batch)).argmax(axis=-1)
@@ -78,5 +83,5 @@ if __name__ == '__main__':
     labels.extend(pred_labels)
 
   submission = pd.DataFrame({'fname': fns, 'label': labels})
-  submission.to_csv('submission_007.csv', index=False, compression=None)
+  submission.to_csv('submission_010.csv', index=False, compression=None)
   print("Done!")

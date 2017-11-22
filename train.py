@@ -21,24 +21,25 @@ def data_gen(audio_processor, sess,
 
 
 def lr_schedule(ep):
-  base_lr = 0.001
+  # base_lr = 0.001
+  base_lr = 0.01
   if ep <= 20:
     return base_lr
   elif 20 < ep <= 30:
     return base_lr / 5
   else:
-    return 0.001 / 10
+    return base_lr / 10
 
 
 # running_mean: -0.8, running_std: 7.0
 # mfcc running_mean: -0.67, running_std: 7.45
-# background_clamp running_mean: -0.00064, running_std: 0.0774
+# background_clamp running_mean: -0.00064, running_std: 0.0774, p5: -0.074, p95: 0.0697  # noqa
 # np.log(11) ~ 2.4
 # np.log(12) ~ 2.5
 # np.log(32) ~ 3.5
 if __name__ == '__main__':
   sess = K.get_session()
-  compute_mfcc = True
+  compute_mfcc = False
   sample_rate = 16000
   batch_size = 64
   classes = get_classes(wanted_only=False)
@@ -58,7 +59,7 @@ if __name__ == '__main__':
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training')
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation')
   model = speech_model(
-      'conv_2d_mobile',
+      'conv_1d_time',
       model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
       num_classes=model_settings['label_count'])
   # embed()
@@ -66,9 +67,9 @@ if __name__ == '__main__':
       train_gen, ap.set_size('training') // batch_size,
       epochs=40, verbose=1, callbacks=[
           ModelCheckpoint(
-              'checkpoints_009/ep-{epoch:03d}-val_loss-{val_loss:.3f}.hdf5'),
+              'checkpoints_011/ep-{epoch:03d}-val_loss-{val_loss:.3f}.hdf5'),
           LearningRateScheduler(lr_schedule),
-          TensorBoard(log_dir='logs_009')],
+          TensorBoard(log_dir='logs_011')],
       validation_data=val_gen,
       validation_steps=ap.set_size('validation') // batch_size)
   eval_res = model.evaluate_generator(
