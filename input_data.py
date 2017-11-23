@@ -368,8 +368,10 @@ class AudioProcessor(object):
     """
     return len(self.data_index[mode])
 
-  def get_data(self, how_many, offset, background_frequency,
-               background_volume_range, time_shift, mode, sess):
+  def get_data(self, how_many, offset,
+               background_frequency, background_volume_range,
+               foreground_frequency, foreground_vol_range,
+               time_shift, mode, sess):
     """Gather samples from the data set, applying transformations as needed.
 
     When the mode is 'training', a random selection of samples will be returned,
@@ -444,17 +446,22 @@ class AudioProcessor(object):
         if np.random.uniform(0, 1) < background_frequency:
           background_volume = np.random.uniform(0, background_volume_range)
         else:
-          background_volume = 0
+          background_volume = 0.0
       else:
         background_reshaped = np.zeros([desired_samples, 1])
-        background_volume = 0
+        background_volume = 0.0
       input_dict[self.background_data_placeholder_] = background_reshaped
       input_dict[self.background_volume_placeholder_] = background_volume
       # If we want silence, mute out the main sample but leave the background.
       if sample['label'] == SILENCE_LABEL:
-        input_dict[self.foreground_volume_placeholder_] = 0
+        input_dict[self.foreground_volume_placeholder_] = 0.0
       else:
-        input_dict[self.foreground_volume_placeholder_] = 1
+        # Turn it up or down
+        if np.random.uniform(0, 1) < foreground_frequency:
+          input_dict[self.foreground_volume_placeholder_] = 1.0 + \
+              np.random.uniform(-foreground_vol_range, foreground_vol_range)
+        else:
+          input_dict[self.foreground_volume_placeholder_] = 1.0
       # Run the graph to produce the output audio.
       if self.compute_mfcc:
         data[i - offset, :] = sess.run(
