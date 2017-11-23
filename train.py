@@ -20,7 +20,8 @@ def data_gen(audio_processor, sess,
         background_volume_range=background_volume_range,
         time_shift=time_shift, mode=mode, sess=sess)
     offset += batch_size
-    offset %= ap.set_size(mode)
+    if offset > ap.set_size(mode) - batch_size:
+      offset = 0
     yield X, y
 
 
@@ -44,7 +45,7 @@ def lr_schedule(ep):
 if __name__ == '__main__':
   sess = K.get_session()
   data_dirs = ['data/train/audio']
-  add_pseudo = True
+  add_pseudo = False
   if add_pseudo:
     data_dirs.append('data/pseudo/audio')
   compute_mfcc = False
@@ -70,9 +71,9 @@ if __name__ == '__main__':
       'conv_1d_time',
       model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
       num_classes=model_settings['label_count'])
-  embed()
+  # embed()
   model.fit_generator(
-      train_gen, 2,  # ap.set_size('training') // batch_size,
+      train_gen, ap.set_size('training') // batch_size,
       epochs=40, verbose=1, callbacks=[
           ModelCheckpoint(
               'checkpoints_013/ep-{epoch:03d}-loss-{loss:.3f}.hdf5'),

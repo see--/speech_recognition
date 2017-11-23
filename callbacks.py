@@ -31,10 +31,11 @@ class ConfusionMatrixCallback(Callback):
 
   def on_epoch_end(self, epoch, logs=None):
     y_true, y_pred = [], []
-    for i in range(min(2, self.validation_steps)):
+    for i in range(self.validation_steps):
       X_batch, y_true_batch = next(self.validation_data)
       y_pred_batch = self.model.predict(X_batch)
       y_true_batch = list(y_true_batch.argmax(axis=-1))
+
       y_pred_batch = list(y_pred_batch.argmax(axis=-1))
       y_true_batch = [self.int2label[y] for y in y_true_batch]
       y_pred_batch = [self.int2label[y] for y in y_pred_batch]
@@ -51,7 +52,6 @@ class ConfusionMatrixCallback(Callback):
         wanted_words_confusion._df_confusion.values)
     print("\n[%03d]: mAcc (all): %.2f, mAcc (wanted): %.2f" %
           (epoch, accs.mean(), wanted_accs.mean()))
-    # from IPython import embed; embed()
     with open('confusion_matrix.txt', 'a') as f:
       f.write('\nEpoch: %03d\n' % epoch)
       f.write(confusion.to_dataframe().to_string())
