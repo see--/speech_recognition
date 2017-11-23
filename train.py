@@ -12,12 +12,15 @@ def data_gen(audio_processor, sess,
              batch_size=128, background_frequency=0.5,
              background_volume_range=0.2, time_shift=(200.0 * 16000.0) / 1000,
              mode='validation'):
+  offset = 0
   while True:
     X, y = audio_processor.get_data(
-        how_many=batch_size, offset=0,
+        how_many=batch_size, offset=0 if mode == 'training' else offset,
         background_frequency=background_frequency,
         background_volume_range=background_volume_range,
         time_shift=time_shift, mode=mode, sess=sess)
+    offset += batch_size
+    offset %= ap.set_size(mode)
     yield X, y
 
 
@@ -67,7 +70,7 @@ if __name__ == '__main__':
       'conv_1d_time',
       model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
       num_classes=model_settings['label_count'])
-  # embed()
+  embed()
   model.fit_generator(
       train_gen, 2,  # ap.set_size('training') // batch_size,
       epochs=40, verbose=1, callbacks=[
