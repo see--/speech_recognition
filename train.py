@@ -1,6 +1,7 @@
 from keras import backend as K
 from keras.callbacks import ModelCheckpoint, LearningRateScheduler
 from keras.callbacks import TensorBoard
+from callbacks import ConfusionMatrixCallback
 from model import speech_model, prepare_model_settings
 from input_data import AudioProcessor, prepare_words_list
 from classes import get_classes
@@ -68,14 +69,19 @@ if __name__ == '__main__':
       num_classes=model_settings['label_count'])
   # embed()
   model.fit_generator(
-      train_gen, ap.set_size('training') // batch_size,
+      train_gen, 2,  # ap.set_size('training') // batch_size,
       epochs=40, verbose=1, callbacks=[
           ModelCheckpoint(
-              'checkpoints_013/ep-{epoch:03d}-val_loss-{val_loss:.3f}.hdf5'),
+              'checkpoints_013/ep-{epoch:03d}-loss-{loss:.3f}.hdf5'),
           LearningRateScheduler(lr_schedule),
-          TensorBoard(log_dir='logs_013')],
-      validation_data=val_gen,
-      validation_steps=ap.set_size('validation') // batch_size)
+          TensorBoard(log_dir='logs_013'),
+          ConfusionMatrixCallback(
+              val_gen,
+              ap.set_size('validation') // batch_size,
+              wanted_words=prepare_words_list(get_classes(wanted_only=True)),
+              all_words=prepare_words_list(classes),
+              label2int=ap.word_to_index)])
+
   eval_res = model.evaluate_generator(
       val_gen, ap.set_size('validation') // batch_size)
   print(eval_res)
