@@ -10,9 +10,14 @@ from IPython import embed  # noqa
 
 def data_gen(audio_processor, sess,
              batch_size=128, background_frequency=0.5,
-             background_volume_range=0.2, time_shift=(200.0 * 16000.0) / 1000,
+             background_volume_range=0.2, time_shift=(100.0 * 16000.0) / 1000,
              mode='validation'):
   offset = 0
+  if mode != 'training':
+    background_frequency = 0.0
+    background_volume_range = 0.0
+    time_shift = 0
+
   while True:
     X, y = audio_processor.get_data(
         how_many=batch_size, offset=0 if mode == 'training' else offset,
