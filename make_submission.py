@@ -46,8 +46,11 @@ if __name__ == '__main__':
       'conv_1d_time',
       model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
       num_classes=model_settings['label_count'])
-  model.load_weights('checkpoints_011/ep-029-val_loss-0.355.hdf5')
-  fns, labels = [], []
+  # embed()
+  model.load_weights('checkpoints_012/ep-033-val_loss-0.114.hdf5')
+  # In wanted_labels we map the not wanted words to `unknown`. Though we
+  # keep track of all labels in `labels`.
+  fns, wanted_labels, labels = [], [], []
   batch_counter = 0
   X_batch = []
   for test_fn in tqdm(test_fns[:]):
@@ -63,25 +66,43 @@ if __name__ == '__main__':
     if batch_counter == batch_size:
       pred = model.predict(np.float32(X_batch)).argmax(axis=-1)
       pred_labels = [int2label[int(p)] for p in pred]
-      pred_labels = [
-          pl if pl in wanted_words else 'unknown' for pl in pred_labels]
-      # map _silence_ to silence
+      # map '_silence_' to 'silence'
       pred_labels = [
           pl if pl != '_silence_' else 'silence' for pl in pred_labels]
+      # map '_unknown_' to 'unknown'
+      pred_labels = [
+          pl if pl != '_unknown_' else 'unknown' for pl in pred_labels]
       labels.extend(pred_labels)
+
+      # map unknown words to 'unknown'
+      pred_labels = [
+          pl if pl in wanted_words or pl == 'silence'
+          else 'unknown' for pl in pred_labels]
+      wanted_labels.extend(pred_labels)
+      # set back counter
       batch_counter, X_batch = 0, []
 
   # process remaining
   if X_batch:
     pred = model.predict(np.float32(X_batch)).argmax(axis=-1)
     pred_labels = [int2label[int(p)] for p in pred]
-    pred_labels = [
-        pl if pl in wanted_words else 'unknown' for pl in pred_labels]
-    # map _silence_ to silence
+    # map '_silence_' to 'silence'
     pred_labels = [
         pl if pl != '_silence_' else 'silence' for pl in pred_labels]
+    # map '_unknown_' to 'unknown'
+    pred_labels = [
+        pl if pl != '_unknown_' else 'unknown' for pl in pred_labels]
     labels.extend(pred_labels)
 
-  submission = pd.DataFrame({'fname': fns, 'label': labels})
-  submission.to_csv('submission_011.csv', index=False, compression=None)
+    # map unknown words to 'unknown'
+    pred_labels = [
+        pl if pl in wanted_words or pl == 'silence'
+        else 'unknown' for pl in pred_labels]
+    wanted_labels.extend(pred_labels)
+
+  pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
+      'submission_012.csv', index=False, compression=None)
+
+  pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
+      'submission_012_all_labels.csv', index=False, compression=None)
   print("Done!")
