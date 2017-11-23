@@ -265,8 +265,9 @@ class AudioProcessor(object):
     """Searches a folder for background noise audio, and loads it into memory.
 
     It's expected that the background audio samples will be in a subdirectory
-    named '_background_noise_' inside the 'data_dir' folder, as .wavs that match
-    the sample rate of the training data, but can be much longer in duration.
+    named '_background_noise_' inside the 'data_dir' folder, as .wavs that
+    match the sample rate of the training data, but can be much longer in
+    duration.
 
     If the '_background_noise_' folder doesn't exist at all, this isn't an
     error, it's just taken to mean that no background noise augmentation should
@@ -506,7 +507,29 @@ class AudioProcessor(object):
           input_dict[foreground_volume_placeholder] = 0
         else:
           input_dict[foreground_volume_placeholder] = 1
-        data[i, :] = sess.run(scaled_foreground, feed_dict=input_dict).flatten()
+        data[i, :] = sess.run(
+            scaled_foreground, feed_dict=input_dict).flatten()
         label_index = self.word_to_index[sample['label']]
         labels.append(words_list[label_index])
     return data, labels
+
+  def summary(self):
+    """Prints a summary of the used classes and the label distributions"""
+    set_counts = {}
+    print("There are %d classes." % (len(self.word_to_index)))
+    print("1%% <-> %d samples in 'training'" %
+          int(self.set_size('training') / 100))
+    for set_index in ['training', 'validation', 'testing']:
+      counts = {k: 0 for k in sorted(self.word_to_index.keys())}
+      num_total = self.set_size(set_index)
+      for data_point in self.data_index[set_index]:
+        counts[data_point['label']] += (1.0 / num_total) * 100.0
+      set_counts[set_index] = counts
+
+    print("%-13s%-6s%-6s%-6s" % ('', 'Train', 'Val', 'Test'))
+    for label_name in sorted(
+            self.word_to_index.keys(), key=self.word_to_index.get):
+      line = "%02d %-12s: " % (self.word_to_index[label_name], label_name)
+      for set_index in ['training', 'validation', 'testing']:
+        line += "%.1f%% " % (set_counts[set_index][label_name])
+      print(line)
