@@ -370,7 +370,7 @@ class AudioProcessor(object):
 
   def get_data(self, how_many, offset,
                background_frequency, background_volume_range,
-               foreground_frequency, foreground_vol_range,
+               foreground_frequency, foreground_volume_range,
                time_shift, mode, sess):
     """Gather samples from the data set, applying transformations as needed.
 
@@ -458,8 +458,9 @@ class AudioProcessor(object):
       else:
         # Turn it up or down
         if np.random.uniform(0, 1) < foreground_frequency:
-          input_dict[self.foreground_volume_placeholder_] = 1.0 + \
-              np.random.uniform(-foreground_vol_range, foreground_vol_range)
+          foreground_volume = 1.0 + np.random.uniform(
+              -foreground_volume_range, foreground_volume_range)
+          input_dict[self.foreground_volume_placeholder_] = foreground_volume
         else:
           input_dict[self.foreground_volume_placeholder_] = 1.0
       # Run the graph to produce the output audio.

@@ -11,7 +11,7 @@ from IPython import embed  # noqa
 def data_gen(audio_processor, sess,
              batch_size=128,
              background_frequency=0.5, background_volume_range=0.2,
-             foreground_frequency=0.5, foreground_vol_range=0.2,
+             foreground_frequency=0.5, foreground_volume_range=0.2,
              time_shift=(100.0 * 16000.0) / 1000,
              mode='validation'):
   offset = 0
@@ -19,7 +19,7 @@ def data_gen(audio_processor, sess,
     background_frequency = 0.0
     background_volume_range = 0.0
     foreground_frequency = 0.0
-    foreground_volumne_range = 0.0
+    foreground_volume_range = 0.0
     time_shift = 0
 
   while True:
@@ -28,7 +28,7 @@ def data_gen(audio_processor, sess,
         background_frequency=background_frequency,
         background_volume_range=background_volume_range,
         foreground_frequency=foreground_frequency,
-        foreground_volumne_range=foreground_volumne_range,
+        foreground_volume_range=foreground_volume_range,
         time_shift=time_shift, mode=mode, sess=sess)
     offset += batch_size
     if offset > ap.set_size(mode) - batch_size:
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     data_dirs.append('data/pseudo/audio')
   compute_mfcc = False
   sample_rate = 16000
-  batch_size = 64
+  batch_size = 100
   classes = get_classes(wanted_only=False)
   model_settings = prepare_model_settings(
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
@@ -87,9 +87,9 @@ if __name__ == '__main__':
       train_gen, ap.set_size('training') // batch_size,
       epochs=40, verbose=1, callbacks=[
           ModelCheckpoint(
-              'checkpoints_014/ep-{epoch:03d}-loss-{loss:.3f}.hdf5'),
+              'checkpoints_015/ep-{epoch:03d}-loss-{loss:.3f}.hdf5'),
           LearningRateScheduler(lr_schedule),
-          TensorBoard(log_dir='logs_014'),
+          TensorBoard(log_dir='logs_015'),
           ConfusionMatrixCallback(
               val_gen,
               ap.set_size('validation') // batch_size,
