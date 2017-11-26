@@ -124,7 +124,7 @@ def conv_1d_model(input_size=16000, num_classes=11):
   return model
 
 
-# DEPRECATED due to problems caused by final Pooling:
+# DEPRECATED due to problems caused by final pooling:
 #   - ['silence', 'silence', dog', 'silence', silence'] might
 #     on average become 'silence'
 #   - it is invariant to left-right e.g. 'one' <-> 'no'
@@ -211,14 +211,14 @@ def conv_1d_time_stacked_model(input_size=16000, num_classes=11):
   x = _context_conv(x, 32, 1)  # (400)  / (400)
   x = _reduce_conv(x, 64, 3)  # (200)   / (196)
   x = _context_conv(x, 64, 3)  # (200)  / (194)
-  x = _reduce_conv(x, 128, 3)  # (100)  / (96)
-  x = _context_conv(x, 128, 3)  # (100) / (92)
-  x = _reduce_conv(x, 256, 3)  # (50)   / (45)
-  x = _context_conv(x, 256, 3)  # (50)  / (41)
-  x = _reduce_conv(x, 384, 3)  # (25)   / (20)
-  x = _context_conv(x, 384, 3)  # (25)  / (16)
-  x = _reduce_conv(x, 512, 3)  # (13)   / (7)
-  x = _context_conv(x, 512, 3)  # (13)  / (5)
+  x = _reduce_conv(x, 96, 3)  # (100)  / (96)
+  x = _context_conv(x, 96, 3)  # (100) / (92)
+  x = _reduce_conv(x, 128, 3)  # (50)   / (45)
+  x = _context_conv(x, 128, 3)  # (50)  / (41)
+  x = _reduce_conv(x, 160, 3)  # (25)   / (20)
+  x = _context_conv(x, 160, 3)  # (25)  / (16)
+  x = _reduce_conv(x, 192, 3)  # (13)   / (7)
+  x = _context_conv(x, 192, 3)  # (13)  / (5)
 
   x = Dropout(0.2)(x)
   x = Conv1D(num_classes, 5, activation='softmax', padding='valid')(x)
@@ -226,7 +226,7 @@ def conv_1d_time_stacked_model(input_size=16000, num_classes=11):
 
   model = Model(input_layer, x, name='speech_model')
   model.compile(
-      optimizer=keras.optimizers.SGD(lr=0.1, momentum=0.98),
+      optimizer=keras.optimizers.Adam(),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
