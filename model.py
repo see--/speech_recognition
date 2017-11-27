@@ -174,7 +174,7 @@ def DEP_conv_1d_time_stacked_model(input_size=16000, num_classes=11):
   x = Conv1D(num_classes, 1, activation='softmax')(x)
   x = Reshape([-1])(x)
 
-  model = Model(input_layer, x, name='speech_model')
+  model = Model(input_layer, x, name='conv_1d_time_stacked_global')
   model.compile(
       optimizer=keras.optimizers.SGD(lr=0.1, momentum=0.98),
       loss=keras.losses.categorical_crossentropy,
@@ -225,7 +225,7 @@ def conv_1d_time_stacked_model(input_size=16000, num_classes=11):
   x = Conv1D(num_classes, 5, activation='softmax', padding='valid')(x)
   x = Reshape([-1])(x)
 
-  model = Model(input_layer, x, name='speech_model')
+  model = Model(input_layer, x, name='conv_1d_time_stacked')
   model.compile(
       optimizer=keras.optimizers.Adam(),
       loss=keras.losses.categorical_crossentropy,
@@ -275,7 +275,7 @@ def conv_1d_lstm_model(input_size=16000, num_classes=11):
   x = Dense(num_classes, activation='softmax')(x)
   x = Reshape([-1])(x)
 
-  model = Model(input_layer, x, name='speech_model')
+  model = Model(input_layer, x, name='conv_1d_lstm')
   model.compile(
       optimizer=keras.optimizers.Adam(),
       loss=keras.losses.categorical_crossentropy,
@@ -325,7 +325,7 @@ def conv_1d_gru_model(input_size=16000, num_classes=11):
   x = Dense(num_classes, activation='softmax')(x)
   x = Reshape([-1])(x)
 
-  model = Model(input_layer, x, name='speech_model')
+  model = Model(input_layer, x, name='conv_1d_gru')
   model.compile(
       optimizer=keras.optimizers.Adam(),
       loss=keras.losses.categorical_crossentropy,
@@ -407,7 +407,7 @@ def conv_2d_mobile_model(input_size=16000, num_classes=11):
   x = Dropout(0.1)(x)
   x = Dense(num_classes, activation='softmax')(x)
 
-  model = Model(input_layer, x, name='speech_model')
+  model = Model(input_layer, x, name='conv_2d_mobile')
   model.compile(
       optimizer=keras.optimizers.SGD(lr=0.001, momentum=0.95),
       loss=keras.losses.categorical_crossentropy,
@@ -452,7 +452,7 @@ def conv_2d_fast_model(input_size=16000, num_classes=11):
   x = GlobalAveragePooling2D()(x)
   x = Dense(num_classes, activation='softmax')(x)
 
-  model = Model(input_layer, x, name='speech_model')
+  model = Model(input_layer, x, name='conv_2d_fast')
   model.compile(
       optimizer=keras.optimizers.SGD(lr=0.001, momentum=0.9),
       loss=keras.losses.categorical_crossentropy,

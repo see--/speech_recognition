@@ -10,7 +10,7 @@ from IPython import embed  # noqa
 
 def data_gen(audio_processor, sess,
              batch_size=128,
-             background_frequency=0.8, background_volume_range=0.4,
+             background_frequency=0.8, background_volume_range=0.2,
              foreground_frequency=0.8, foreground_volume_range=0.2,
              time_shift=(100.0 * 16000.0) / 1000,
              mode='validation'):
