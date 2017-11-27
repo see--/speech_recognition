@@ -10,8 +10,8 @@ from IPython import embed  # noqa
 
 def data_gen(audio_processor, sess,
              batch_size=128,
-             background_frequency=0.5, background_volume_range=0.2,
-             foreground_frequency=0.5, foreground_volume_range=0.2,
+             background_frequency=0.8, background_volume_range=0.4,
+             foreground_frequency=0.8, foreground_volume_range=0.2,
              time_shift=(100.0 * 16000.0) / 1000,
              mode='validation'):
   offset = 0
@@ -42,9 +42,11 @@ def lr_schedule(ep):
   if ep <= 20:
     return base_lr
   elif 20 < ep <= 30:
-    return base_lr / 5
+    return base_lr / 2
+  elif 30 < ep <= 40:
+    return base_lr / 4
   else:
-    return base_lr / 10
+    return base_lr / 8
 
 
 # running_mean: -0.8, running_std: 7.0
@@ -56,7 +58,7 @@ def lr_schedule(ep):
 if __name__ == '__main__':
   sess = K.get_session()
   data_dirs = ['data/train/audio']
-  add_pseudo = True
+  add_pseudo = False
   if add_pseudo:
     data_dirs.append('data/pseudo/audio')
   compute_mfcc = False
@@ -79,7 +81,7 @@ if __name__ == '__main__':
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training')
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation')
   model = speech_model(
-      'conv_1d_time',
+      'conv_1d_gru',
       model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
       num_classes=model_settings['label_count'])
   # embed()
@@ -93,9 +95,9 @@ if __name__ == '__main__':
               wanted_words=prepare_words_list(get_classes(wanted_only=True)),
               all_words=prepare_words_list(classes),
               label2int=ap.word_to_index),
-          TensorBoard(log_dir='logs_017'),
+          TensorBoard(log_dir='logs_019'),
           ModelCheckpoint(
-              'checkpoints_017/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
+              'checkpoints_019/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
 
   eval_res = model.evaluate_generator(
       val_gen, ap.set_size('validation') // batch_size)

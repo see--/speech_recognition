@@ -47,7 +47,7 @@ if __name__ == '__main__':
       model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
       num_classes=model_settings['label_count'])
   # embed()
-  model.load_weights('checkpoints_017/ep-036-vl-0.1969.hdf5')
+  model.load_weights('checkpoints_018/ep-049-vl-0.2185.hdf5')
   # In wanted_labels we map the not wanted words to `unknown`. Though we
   # keep track of all labels in `labels`.
   fns, wanted_labels, labels = [], [], []
@@ -101,8 +101,8 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_017.csv', index=False, compression=None)
+      'submission_018.csv', index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_017_all_labels.csv', index=False, compression=None)
+      'submission_018_all_labels.csv', index=False, compression=None)
   print("Done!")
