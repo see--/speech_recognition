@@ -44,10 +44,10 @@ if __name__ == '__main__':
       wav_decoder.sample_rate,
       dct_coefficient_count=model_settings['dct_coefficient_count'])
   # embed()
-  model = load_model('checkpoints_021/ep-031-vl-0.2183.hdf5')
+  model = load_model('checkpoints_017/ep-037-vl-0.2005.hdf5')
   # In wanted_labels we map the not wanted words to `unknown`. Though we
   # keep track of all labels in `labels`.
-  fns, wanted_labels, labels = [], [], []
+  fns, wanted_labels, labels, probabilities = [], [], [], []
   batch_counter = 0
   X_batch = []
   for test_fn in tqdm(test_fns[:]):
@@ -61,7 +61,9 @@ if __name__ == '__main__':
 
     batch_counter += 1
     if batch_counter == batch_size:
-      pred = model.predict(np.float32(X_batch)).argmax(axis=-1)
+      pred = model.predict(np.float32(X_batch))
+      probabilities.append(pred)
+      pred = pred.argmax(axis=-1)
       pred_labels = [int2label[int(p)] for p in pred]
       # map '_silence_' to 'silence'
       pred_labels = [
@@ -81,7 +83,9 @@ if __name__ == '__main__':
 
   # process remaining
   if X_batch:
-    pred = model.predict(np.float32(X_batch)).argmax(axis=-1)
+    pred = model.predict(np.float32(X_batch))
+    probabilities.append(pred)
+    pred = pred.argmax(axis=-1)
     pred_labels = [int2label[int(p)] for p in pred]
     # map '_silence_' to 'silence'
     pred_labels = [
@@ -98,8 +102,16 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_021.csv', index=False, compression=None)
+      'submission_017b.csv', index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_021_all_labels.csv', index=False, compression=None)
+      'submission_017b_all_labels.csv', index=False, compression=None)
+
+  probabilities = np.concatenate(probabilities, axis=0)
+  all_data = pd.DataFrame({'fname': fns, 'label': labels})
+  for i, l in int2label.items():
+    all_data[l] = np.round(probabilities[:, i], decimals=3)
+  all_data.to_csv(
+      'submission_017b_all_labels_probs.csv', index=False, compression=None,
+      float_format='%.2f')
   print("Done!")
