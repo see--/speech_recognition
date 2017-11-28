@@ -110,8 +110,7 @@ if __name__ == '__main__':
   probabilities = np.concatenate(probabilities, axis=0)
   all_data = pd.DataFrame({'fname': fns, 'label': labels})
   for i, l in int2label.items():
-    all_data[l] = np.round(probabilities[:, i], decimals=3)
+    all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_017b_all_labels_probs.csv', index=False, compression=None,
-      float_format='%.2f')
+      'submission_017b_all_labels_probs.csv', index=False, compression=None)
   print("Done!")

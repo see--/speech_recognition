@@ -60,7 +60,7 @@ def lr_schedule(ep):
 if __name__ == '__main__':
   sess = K.get_session()
   data_dirs = ['data/train/audio']
-  add_pseudo = True
+  add_pseudo = False
   if add_pseudo:
     data_dirs.append('data/pseudo/audio')
   compute_mfcc = False
@@ -99,7 +99,7 @@ if __name__ == '__main__':
               label2int=ap.word_to_index),
           TensorBoard(log_dir='logs_021'),
           ModelCheckpoint(
-              'checkpoints_021/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
+              'checkpoints_022/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
 
   eval_res = model.evaluate_generator(
       val_gen, ap.set_size('validation') // batch_size)
