@@ -7,7 +7,8 @@ import os
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from model import speech_model, prepare_model_settings
+from keras.models import load_model
+from model import prepare_model_settings
 from input_data import prepare_words_list
 from classes import get_classes, get_int2label
 from IPython import embed  # noqa
@@ -42,12 +43,8 @@ if __name__ == '__main__':
       spectrogram,
       wav_decoder.sample_rate,
       dct_coefficient_count=model_settings['dct_coefficient_count'])
-  model = speech_model(
-      'conv_1d_time',
-      model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
-      num_classes=model_settings['label_count'])
   # embed()
-  model.load_weights('checkpoints_018/ep-049-vl-0.2185.hdf5')
+  model = load_model('checkpoints_021/ep-031-vl-0.2183.hdf5')
   # In wanted_labels we map the not wanted words to `unknown`. Though we
   # keep track of all labels in `labels`.
   fns, wanted_labels, labels = [], [], []
@@ -101,8 +98,8 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_018.csv', index=False, compression=None)
+      'submission_021.csv', index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_018_all_labels.csv', index=False, compression=None)
+      'submission_021_all_labels.csv', index=False, compression=None)
   print("Done!")

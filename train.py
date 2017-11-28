@@ -97,9 +97,9 @@ if __name__ == '__main__':
               wanted_words=prepare_words_list(get_classes(wanted_only=True)),
               all_words=prepare_words_list(classes),
               label2int=ap.word_to_index),
-          TensorBoard(log_dir='logs_020'),
+          TensorBoard(log_dir='logs_021'),
           ModelCheckpoint(
-              'checkpoints_020/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
+              'checkpoints_021/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
 
   eval_res = model.evaluate_generator(
       val_gen, ap.set_size('validation') // batch_size)
