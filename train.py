@@ -22,7 +22,6 @@ def data_gen(audio_processor, sess,
     foreground_frequency = 0.0
     foreground_volume_range = 0.0
     time_shift = 0
-
   while True:
     X, y = audio_processor.get_data(
         how_many=batch_size, offset=0 if mode == 'training' else offset,
@@ -39,9 +38,9 @@ def data_gen(audio_processor, sess,
 
 def lr_schedule(ep):
   base_lr = 0.001
-  if ep <= 10:
+  if ep <= 20:
     return base_lr
-  elif 10 < ep <= 20:
+  elif 20 < ep <= 30:
     return base_lr / 2
   elif 20 < ep <= 30:
     return base_lr / 4
@@ -97,9 +96,9 @@ if __name__ == '__main__':
               wanted_words=prepare_words_list(get_classes(wanted_only=True)),
               all_words=prepare_words_list(classes),
               label2int=ap.word_to_index),
-          TensorBoard(log_dir='logs_021'),
+          TensorBoard(log_dir='logs_024'),
           ModelCheckpoint(
-              'checkpoints_022/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
+              'checkpoints_024/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
 
   eval_res = model.evaluate_generator(
       val_gen, ap.set_size('validation') // batch_size)

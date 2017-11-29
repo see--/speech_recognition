@@ -194,35 +194,37 @@ def conv_1d_time_stacked_model(input_size=16000, num_classes=11):
   """
   input_layer = Input(shape=[input_size])
   x = input_layer
-  x = Reshape([200, 80])(x)
+  x = Reshape([800, 20])(x)
   x = PreprocessRaw(x)
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
     x = Conv1D(num_filters, k, padding=padding,
-               kernel_regularizer=l2(0.000001))(x)
+               kernel_regularizer=l2(0.00001))(x)
     x = BatchNormalization()(x)
     x = Relu6(x)
-    x = MaxPool1D(pool_size=3, strides=strides, padding=padding)(x)
+    x = AveragePooling1D(pool_size=3, strides=strides, padding=padding)(x)
     return x
 
   def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
     x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
-               kernel_regularizer=l2(0.000001))(x)
+               kernel_regularizer=l2(0.00001))(x)
     x = BatchNormalization()(x)
     x = Relu6(x)
     return x
 
-  x = _context_conv(x, 64, 1)
-  x = _reduce_conv(x, 128, 3)
-  x = _context_conv(x, 128, 3)
+  x = _context_conv(x, 32, 1)
+  x = _reduce_conv(x, 64, 3)
+  x = _context_conv(x, 64, 3, dilation_rate=3)
+  x = _reduce_conv(x, 96, 3)
+  x = _context_conv(x, 96, 3, dilation_rate=3)
+  x = _reduce_conv(x, 160, 3)
+  x = _context_conv(x, 160, 3, dilation_rate=2)
   x = _reduce_conv(x, 256, 3)
-  x = _context_conv(x, 256, 3)
-  x = _context_conv(x, 256, 3)
-  x = _reduce_conv(x, 384, 3)
-  x = _context_conv(x, 384, 3)
-  x = _context_conv(x, 384, 3)
+  x = _context_conv(x, 256, 3, dilation_rate=2)
+  x = _reduce_conv(x, 416, 3)
+  x = _context_conv(x, 416, 3)
 
-  x = Dropout(0.1)(x)
+  x = Dropout(0.15)(x)
   x = Conv1D(num_classes, 15, activation='softmax', padding='valid')(x)
   x = Reshape([-1])(x)
 
