@@ -12,7 +12,7 @@ from IPython import embed  # noqa
 def data_gen(audio_processor, sess,
              batch_size=128,
              background_frequency=0.8, background_volume_range=0.2,
-             foreground_frequency=0.8, foreground_volume_range=0.2,
+             foreground_frequency=0.5, foreground_volume_range=0.2,
              time_shift=(100.0 * 16000.0) / 1000,
              mode='validation'):
   offset = 0
@@ -65,7 +65,7 @@ if __name__ == '__main__':
   compute_mfcc = False
   sample_rate = 16000
   batch_size = 100
-  classes = get_classes(wanted_only=False)
+  classes = get_classes(wanted_only=True)
   model_settings = prepare_model_settings(
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
       clip_duration_ms=1000, window_size_ms=30.0, window_stride_ms=10.0,
@@ -73,7 +73,7 @@ if __name__ == '__main__':
   ap = AudioProcessor(
       data_dirs=data_dirs,
       silence_percentage=15.0,
-      unknown_percentage=7.0,
+      unknown_percentage=40.0,
       wanted_words=classes,
       validation_percentage=10.0,
       testing_percentage=0.0,
@@ -82,10 +82,10 @@ if __name__ == '__main__':
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training')
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation')
   model = speech_model(
-      'conv_1d_time',
+      'conv_1d_gru',
       model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
       num_classes=model_settings['label_count'])
-  # embed()
+  embed()
   model.fit_generator(
       train_gen, ap.set_size('training') // batch_size,
       epochs=50, verbose=1, callbacks=[
@@ -96,9 +96,9 @@ if __name__ == '__main__':
               wanted_words=prepare_words_list(get_classes(wanted_only=True)),
               all_words=prepare_words_list(classes),
               label2int=ap.word_to_index),
-          TensorBoard(log_dir='logs_024'),
+          TensorBoard(log_dir='logs_027'),
           ModelCheckpoint(
-              'checkpoints_024/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
+              'checkpoints_027/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
 
   eval_res = model.evaluate_generator(
       val_gen, ap.set_size('validation') // batch_size)

@@ -6,7 +6,7 @@ from keras.layers import Conv2D, MaxPool2D
 from keras.layers import BatchNormalization, Activation
 from keras.layers import GlobalAveragePooling2D, MaxPool1D
 from keras.layers import Dropout, Add, GlobalAveragePooling1D
-from keras.layers import LSTM, GRU
+from keras.layers import LSTM, GRU, Bidirectional
 from keras.layers.noise import AlphaDropout
 from keras.regularizers import l2
 from keras.models import Model
@@ -194,7 +194,7 @@ def conv_1d_time_stacked_model(input_size=16000, num_classes=11):
   """
   input_layer = Input(shape=[input_size])
   x = input_layer
-  x = Reshape([800, 20])(x)
+  x = Reshape([400, 40])(x)
   x = PreprocessRaw(x)
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
@@ -214,15 +214,15 @@ def conv_1d_time_stacked_model(input_size=16000, num_classes=11):
 
   x = _context_conv(x, 32, 1)
   x = _reduce_conv(x, 64, 3)
-  x = _context_conv(x, 64, 3, dilation_rate=3)
-  x = _reduce_conv(x, 96, 3)
-  x = _context_conv(x, 96, 3, dilation_rate=3)
-  x = _reduce_conv(x, 160, 3)
-  x = _context_conv(x, 160, 3, dilation_rate=2)
+  x = _context_conv(x, 64, 3)
+  x = _reduce_conv(x, 128, 3)
+  x = _context_conv(x, 128, 3)
   x = _reduce_conv(x, 256, 3)
-  x = _context_conv(x, 256, 3, dilation_rate=2)
-  x = _reduce_conv(x, 416, 3)
-  x = _context_conv(x, 416, 3)
+  x = _context_conv(x, 256, 3)
+  x = _context_conv(x, 256, 3)
+  x = _reduce_conv(x, 384, 3)
+  x = _context_conv(x, 384, 3)
+  x = _context_conv(x, 384, 3)
 
   x = Dropout(0.15)(x)
   x = Conv1D(num_classes, 15, activation='softmax', padding='valid')(x)
@@ -301,34 +301,37 @@ def conv_1d_gru_model(input_size=16000, num_classes=11):
   x = PreprocessRaw(x)
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
-    x = Conv1D(num_filters, k, padding=padding)(x)
+    x = Conv1D(num_filters, k, padding=padding,
+               kernel_regularizer=l2(0.00001))(x)
     x = BatchNormalization()(x)
     x = Relu6(x)
-    x = MaxPool1D(pool_size=3, strides=strides, padding=padding)(x)
+    x = AveragePooling1D(pool_size=3, strides=strides, padding=padding)(x)
     return x
 
   def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
-    x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate)(x)
+    x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
+               kernel_regularizer=l2(0.00001))(x)
     x = BatchNormalization()(x)
     x = Relu6(x)
     return x
-  #                               Same  / Valid
-  x = _context_conv(x, 32, 1)  # (400)  / (400)
-  x = _reduce_conv(x, 64, 3)  # (200)   / (196)
-  x = _context_conv(x, 64, 3)  # (200)  / (194)
-  x = _reduce_conv(x, 96, 3)  # (100)  / (96)
-  x = _context_conv(x, 96, 3)  # (100) / (92)
-  x = _reduce_conv(x, 128, 3)  # (50)   / (45)
-  x = _context_conv(x, 128, 3)  # (50)  / (41)
-  x = _reduce_conv(x, 160, 3)  # (25)   / (20)
-  x = _context_conv(x, 160, 3)  # (25)  / (16)
-  x = _reduce_conv(x, 192, 3)  # (13)   / (7)
-  x = _context_conv(x, 192, 3)  # (13)  / (5)
-  x = GRU(192, dropout=0.2, recurrent_dropout=0.2)(x)
-  x = Dense(num_classes, activation='softmax')(x)
-  x = Reshape([-1])(x)
 
-  model = Model(input_layer, x, name='conv_1d_gru')
+  x = _context_conv(x, 32, 1)
+  x = _reduce_conv(x, 64, 3)
+  x = _context_conv(x, 64, 3)
+  x = _reduce_conv(x, 128, 3)
+  x = _context_conv(x, 128, 3)
+  x = _reduce_conv(x, 256, 3)
+  x = _context_conv(x, 256, 3)
+  x = _context_conv(x, 256, 3)
+  x = _reduce_conv(x, 384, 3)
+  x = _context_conv(x, 384, 3)
+  x = _context_conv(x, 384, 3)  # (15, 384)
+
+  x = Bidirectional(GRU(192, dropout=0.2, recurrent_dropout=0.2))(x)
+  # x = Reshape([-1])(x)
+  x = Dense(num_classes, activation='softmax')(x)
+
+  model = Model(input_layer, x, name='conv_1d_bigru')
   model.compile(
       optimizer=keras.optimizers.Adam(),
       loss=keras.losses.categorical_crossentropy,
