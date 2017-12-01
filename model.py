@@ -305,7 +305,7 @@ def conv_1d_gru_model(input_size=16000, num_classes=11):
                kernel_regularizer=l2(0.00001))(x)
     x = BatchNormalization()(x)
     x = Relu6(x)
-    x = AveragePooling1D(pool_size=3, strides=strides, padding=padding)(x)
+    x = MaxPool1D(pool_size=3, strides=strides, padding=padding)(x)
     return x
 
   def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
@@ -318,16 +318,18 @@ def conv_1d_gru_model(input_size=16000, num_classes=11):
   x = _context_conv(x, 32, 1)
   x = _reduce_conv(x, 64, 3)
   x = _context_conv(x, 64, 3)
+  x = _context_conv(x, 64, 3)
   x = _reduce_conv(x, 128, 3)
+  x = _context_conv(x, 128, 3)
   x = _context_conv(x, 128, 3)
   x = _reduce_conv(x, 256, 3)
   x = _context_conv(x, 256, 3)
   x = _context_conv(x, 256, 3)
   x = _reduce_conv(x, 384, 3)
   x = _context_conv(x, 384, 3)
-  x = _context_conv(x, 384, 3)  # (15, 384)
+  x = _context_conv(x, 384, 3)  # (12, 384)
 
-  x = Bidirectional(GRU(192, dropout=0.2, recurrent_dropout=0.2))(x)
+  x = Bidirectional(GRU(192, dropout=0.1, recurrent_dropout=0.1))(x)
   # x = Reshape([-1])(x)
   x = Dense(num_classes, activation='softmax')(x)
 

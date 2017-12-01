@@ -37,17 +37,17 @@ def data_gen(audio_processor, sess,
 
 
 def lr_schedule(ep):
-  base_lr = 0.001
+  base_lr = 3e-4  # 0.001
   if ep <= 20:
     return base_lr
   elif 20 < ep <= 30:
     return base_lr / 2
-  elif 20 < ep <= 30:
-    return base_lr / 4
   elif 30 < ep <= 40:
+    return base_lr / 4
+  elif 40 < ep <= 50:
     return base_lr / 8
   else:
-    return base_lr / 16
+    return base_lr / 10
 
 
 # running_mean: -0.8, running_std: 7.0
@@ -73,7 +73,7 @@ if __name__ == '__main__':
   ap = AudioProcessor(
       data_dirs=data_dirs,
       silence_percentage=15.0,
-      unknown_percentage=40.0,
+      unknown_percentage=30.0,
       wanted_words=classes,
       validation_percentage=10.0,
       testing_percentage=0.0,
@@ -88,7 +88,7 @@ if __name__ == '__main__':
   embed()
   model.fit_generator(
       train_gen, ap.set_size('training') // batch_size,
-      epochs=50, verbose=1, callbacks=[
+      epochs=60, verbose=1, callbacks=[
           LearningRateScheduler(lr_schedule),
           ConfusionMatrixCallback(
               val_gen,
@@ -96,9 +96,9 @@ if __name__ == '__main__':
               wanted_words=prepare_words_list(get_classes(wanted_only=True)),
               all_words=prepare_words_list(classes),
               label2int=ap.word_to_index),
-          TensorBoard(log_dir='logs_027'),
+          TensorBoard(log_dir='logs_028'),
           ModelCheckpoint(
-              'checkpoints_027/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
+              'checkpoints_028/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
 
   eval_res = model.evaluate_generator(
       val_gen, ap.set_size('validation') // batch_size)
