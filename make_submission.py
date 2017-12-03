@@ -45,7 +45,7 @@ if __name__ == '__main__':
       wav_decoder.sample_rate,
       dct_coefficient_count=model_settings['dct_coefficient_count'])
   # embed()
-  model = load_model('checkpoints_027/ep-048-vl-0.2266.hdf5')
+  model = load_model('checkpoints_031/ep-053-vl-0.2193.hdf5')
   # In wanted_labels we map the not wanted words to `unknown`. Though we
   # keep track of all labels in `labels`.
   fns, wanted_labels, labels, probabilities = [], [], [], []
@@ -103,15 +103,15 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_027.csv', index=False, compression=None)
+      'submission_031.csv', index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_027_all_labels.csv', index=False, compression=None)
+      'submission_031_all_labels.csv', index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
   all_data = pd.DataFrame({'fname': fns, 'label': labels})
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_027_all_labels_probs.csv', index=False, compression=None)
+      'submission_031_all_labels_probs.csv', index=False, compression=None)
   print("Done!")

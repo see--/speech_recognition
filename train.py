@@ -37,7 +37,7 @@ def data_gen(audio_processor, sess,
 
 
 def lr_schedule(ep):
-  base_lr = 3e-4  # 0.001
+  base_lr = 0.001
   if ep <= 20:
     return base_lr
   elif 20 < ep <= 30:
@@ -65,7 +65,7 @@ if __name__ == '__main__':
   compute_mfcc = False
   sample_rate = 16000
   batch_size = 100
-  classes = get_classes(wanted_only=True)
+  classes = get_classes(wanted_only=False)
   model_settings = prepare_model_settings(
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
       clip_duration_ms=1000, window_size_ms=30.0, window_stride_ms=10.0,
@@ -73,7 +73,7 @@ if __name__ == '__main__':
   ap = AudioProcessor(
       data_dirs=data_dirs,
       silence_percentage=15.0,
-      unknown_percentage=30.0,
+      unknown_percentage=0.0,
       wanted_words=classes,
       validation_percentage=10.0,
       testing_percentage=0.0,
@@ -82,10 +82,10 @@ if __name__ == '__main__':
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training')
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation')
   model = speech_model(
-      'conv_1d_time',
+      'conv_1d_simple',
       model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
       num_classes=model_settings['label_count'])
-  # embed()
+  embed()
   model.fit_generator(
       train_gen, ap.set_size('training') // batch_size,
       epochs=60, verbose=1, callbacks=[
@@ -96,9 +96,9 @@ if __name__ == '__main__':
               wanted_words=prepare_words_list(get_classes(wanted_only=True)),
               all_words=prepare_words_list(classes),
               label2int=ap.word_to_index),
-          TensorBoard(log_dir='logs_029'),
+          TensorBoard(log_dir='logs_032'),
           ModelCheckpoint(
-              'checkpoints_029/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
+              'checkpoints_032/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
 
   eval_res = model.evaluate_generator(
       val_gen, ap.set_size('validation') // batch_size)

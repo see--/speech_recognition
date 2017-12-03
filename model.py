@@ -2,11 +2,12 @@ import keras
 from keras import backend as K
 from keras.layers import Dense, Input, Lambda, Conv1D, AveragePooling1D
 from keras.layers import Reshape, Flatten
-from keras.layers import Conv2D, MaxPool2D
+from keras.layers import Conv2D, MaxPool2D, MaxPool1D
 from keras.layers import BatchNormalization, Activation
 from keras.layers import GlobalAveragePooling2D, MaxPool1D
 from keras.layers import Dropout, Add, GlobalAveragePooling1D
 from keras.layers import LSTM, GRU, Bidirectional
+from keras.layers import Concatenate, AveragePooling2D
 from keras.layers.noise import AlphaDropout
 from keras.regularizers import l2
 from keras.models import Model
@@ -70,7 +71,7 @@ def simple_model(input_size=16000, num_classes=11):
   return model
 
 
-def conv_1d_model(input_size=16000, num_classes=11):
+def conv_1d_simple_model(input_size=16000, num_classes=11):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -81,56 +82,65 @@ def conv_1d_model(input_size=16000, num_classes=11):
   """
   input_layer = Input(shape=[input_size])
   x = input_layer
-  x = Reshape([-1, 1])(x)
   x = PreprocessRaw(x)
+  x = Reshape([-1, 1])(x)
 
-  def _reduce_conv(x, num_filters, k, strides=2):
-    x = Conv1D(num_filters, k, padding='same', activation='linear')(x)
+  def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
+    x = Conv1D(num_filters, k, padding=padding, strides=strides,
+               kernel_regularizer=l2(0.00001), use_bias=False)(x)
     x = BatchNormalization()(x)
-    x = Activation('relu')(x)
-    x = MaxPool1D(pool_size=strides)(x)
+    x = Relu6(x)
     return x
 
-  def _context_conv(x, num_filters, k, dilation_rate):
-    x = Conv1D(num_filters, k, padding='same',
-               dilation_rate=dilation_rate, activation='linear')(x)
+  def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
+    x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
+               kernel_regularizer=l2(0.00001), use_bias=False)(x)
     x = BatchNormalization()(x)
-    x = Activation('relu')(x)
+    x = Relu6(x)
     return x
 
-  x = AveragePooling1D()(x)
+  x = _reduce_conv(x, 32, 5, strides=4)  # 4000
+  x = _context_conv(x, 48, 3)
+  x = _reduce_conv(x, 64, 3)  # 2000
+  x = _context_conv(x, 48, 1)
+  x = _context_conv(x, 72, 3)
+  x = _reduce_conv(x, 72, 3)  # 1000
+  x = _context_conv(x, 64, 1)
+  x = _context_conv(x, 96, 3)
+  x = _reduce_conv(x, 96, 3)  # 500
+  x = _context_conv(x, 72, 1)
+  x = _context_conv(x, 128, 3)
+  x = _reduce_conv(x, 128, 3)  # 250
+  x = _context_conv(x, 96, 1)
+  x = _context_conv(x, 160, 3)
+  x = _reduce_conv(x, 160, 3)  # 125
+  x = _context_conv(x, 128, 1)
+  x = _context_conv(x, 192, 3)
+  x = _reduce_conv(x, 192, 3)  # 64
+  x = _context_conv(x, 160, 1)
+  x = _context_conv(x, 256, 3)
+  x = _reduce_conv(x, 256, 3)  # 64
+  x = _context_conv(x, 192, 1)
+  x = _context_conv(x, 288, 3)
+  x = _reduce_conv(x, 288, 3)  # 64
+  x = _context_conv(x, 256, 1)
+  x = _context_conv(x, 288, 3)
 
-  x = _reduce_conv(x, 8, 5, strides=4)  # (2000)
-  x = _context_conv(x, 8, 5, 3)
-  x = _reduce_conv(x, 16, 5, strides=4)  # (500)
-  x = _context_conv(x, 16, 5, 3)
-  x = _reduce_conv(x, 32, 3, strides=2)  # (125)
-  x = _context_conv(x, 32, 3, 3)
-  x = _reduce_conv(x, 64, 3, strides=2)  # (62)
-  x = _context_conv(x, 64, 3, 3)
-  x = _reduce_conv(x, 128, 3, strides=2)  # (31)
-  x = _context_conv(x, 128, 3, 3)
-  x = _reduce_conv(x, 256, 3, strides=2)  # (15)
-  x = _context_conv(x, 256, 3, 3)
-  x = _reduce_conv(x, 512, 3, strides=2)  # (7)
-  x = _context_conv(x, 512, 3, 3)
+  x = Bidirectional(GRU(144, dropout=0.1, recurrent_dropout=0.1))(x)
 
-  x = GlobalAveragePooling1D()(x)
-  x = Dense(num_classes, activation='softmax')(x)
+  # x = Dropout(0.15)(x)
+  # x = Conv1D(num_classes, 10, activation='softmax', padding='valid')(x)
+  # x = Reshape([-1])(x)
 
-  model = Model(input_layer, x, name='speech_model')
+  model = Model(input_layer, x, name='conv_1d_time_stacked')
   model.compile(
-      optimizer=keras.optimizers.SGD(lr=0.1, momentum=0.98),
+      optimizer=keras.optimizers.Adam(),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
 
 
-# DEPRECATED due to problems caused by final pooling:
-#   - ['silence', 'silence', dog', 'silence', silence'] might
-#     on average become 'silence'
-#   - it is invariant to left-right e.g. 'one' <-> 'no'
-def DEP_conv_1d_time_stacked_model(input_size=16000, num_classes=11):
+def conv_1d_inception_model(input_size=16000, num_classes=11):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -141,43 +151,90 @@ def DEP_conv_1d_time_stacked_model(input_size=16000, num_classes=11):
   """
   input_layer = Input(shape=[input_size])
   x = input_layer
-  x = Reshape([400, 40])(x)
   x = PreprocessRaw(x)
+  x = Reshape([-1, 1])(x)
 
-  def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
-    x = Conv1D(num_filters, k, padding=padding)(x)
+  def _reduce_conv(x, num_filters, k, strides=2, padding='same'):
+    x = Conv1D(num_filters, k, padding=padding, strides=strides,
+               kernel_regularizer=l2(0.00001), use_bias=False)(x)
     x = BatchNormalization()(x)
-    x = Activation('relu')(x)
-    x = MaxPool1D(pool_size=3, strides=strides, padding=padding)(x)
+    x = Relu6(x)
     return x
 
-  def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
-    x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate)(x)
+  def _context_conv(x, num_filters, k, dilation_rate=1, padding='same'):
+    x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
+               kernel_regularizer=l2(0.00001), use_bias=False)(x)
     x = BatchNormalization()(x)
-    x = Activation('relu')(x)
+    x = Relu6(x)
     return x
-  #                               Same  / Valid
-  x = _context_conv(x, 64, 3)  # (400)  / (396)
-  x = _reduce_conv(x, 128, 3)  # (200)  / (197)
-  x = _context_conv(x, 128, 3)  # (200) / (193)
-  x = _reduce_conv(x, 256, 3)  # (100)  / (96)
-  x = _context_conv(x, 256, 3)  # (100) / (92)
-  x = _reduce_conv(x, 384, 3)  # (50)   / (45)
-  x = _context_conv(x, 384, 3)  # (50)  / (41)
-  x = _reduce_conv(x, 512, 3)  # (25)   / (20)
-  x = _context_conv(x, 512, 3)  # (25)  / (16)
-  x = _reduce_conv(x, 640, 3)  # (13)   / (7)
-  x = _context_conv(x, 640, 3)  # (13)  / (5)
 
-  x = Dropout(0.1)(x)
+  def _stem(x):
+    x = _reduce_conv(x, 32, 5, strides=4, padding='valid')  # ~4000
+    x = _context_conv(x, 32, 3, padding='valid')
+    x = _reduce_conv(x, 64, 3, padding='valid')  # ~2000
+    x = _context_conv(x, 64, 3, padding='valid')
+    x = _reduce_conv(x, 128, 3, padding='valid')  # ~1000
+    x = _context_conv(x, 128, 3, padding='valid')
+    x = _reduce_conv(x, 256, 3, padding='valid')  # ~500
+    x = _context_conv(x, 256, 3, padding='valid')
+    x = _reduce_conv(x, 384, 3, padding='valid')  # ~250
+    x = _context_conv(x, 384, 3, padding='valid')
+    x = _reduce_conv(x, 512, 3, padding='valid')  # ~125
+    x = _context_conv(x, 512, 3, padding='valid')
+    return x
 
-  x = AveragePooling1D(pool_size=5)(x)
-  x = Conv1D(num_classes, 1, activation='softmax')(x)
+  def _inception_block(x, base_num, block_id):
+    branch1x1 = _context_conv(x, int(2 * base_num), 1)
+
+    branch5x5 = _context_conv(x, int(1.5 * base_num), 1)
+    branch5x5 = _context_conv(branch5x5, int(2 * base_num), 5)
+
+    branch3x3dbl = _context_conv(x, int(2 * base_num), 1)
+    branch3x3dbl = _context_conv(branch3x3dbl, int(3 * base_num), 3)
+    branch3x3dbl = _context_conv(branch3x3dbl, int(3 * base_num), 3)
+
+    branch_pool = AveragePooling1D(3, strides=1, padding='same')(x)
+    branch_pool = _context_conv(branch_pool, base_num, 1)
+    x = Concatenate(name='mixed%d' % block_id)(
+        [branch1x1, branch5x5, branch3x3dbl, branch_pool])
+    return x
+
+  def _reduce_inception_block(x, base_num, strides, block_id):
+    branch3x3 = _reduce_conv(x, int(6 * base_num), 3, strides=strides,
+                             padding='valid')
+
+    branch3x3dbl = _context_conv(x, base_num, 1)
+    branch3x3dbl = _context_conv(branch3x3dbl, int(1.5 * base_num), 3)
+    branch3x3dbl = _reduce_conv(branch3x3dbl, int(1.5 * base_num), 3,
+                                strides=strides, padding='valid')
+
+    branch_pool = MaxPool1D(3, strides=strides)(x)
+    x = Concatenate(name='mixed%d' % block_id)(
+        [branch3x3, branch3x3dbl, branch_pool])
+    return x
+
+  # from IPython import embed
+  # embed()
+  x = _stem(x)
+  x = _inception_block(x, base_num=32, block_id=1)
+  x = _inception_block(x, base_num=16, block_id=2)
+  x = _reduce_inception_block(x, base_num=32, strides=2, block_id=3)
+  x = _inception_block(x, base_num=32, block_id=4)
+  x = _inception_block(x, base_num=32, block_id=5)
+  x = _reduce_inception_block(x, base_num=64, strides=2, block_id=6)
+  x = _inception_block(x, base_num=64, block_id=7)
+  x = _inception_block(x, base_num=64, block_id=8)
+  x = _reduce_inception_block(x, base_num=96, strides=2, block_id=9)
+  x = _inception_block(x, base_num=96, block_id=10)
+  x = _inception_block(x, base_num=96, block_id=11)
+
+  x = Dropout(0.15)(x)
+  x = Conv1D(num_classes, 14, activation='softmax', padding='valid')(x)
   x = Reshape([-1])(x)
 
-  model = Model(input_layer, x, name='conv_1d_time_stacked_global')
+  model = Model(input_layer, x, name='conv_1d_time_stacked')
   model.compile(
-      optimizer=keras.optimizers.SGD(lr=0.1, momentum=0.98),
+      optimizer=keras.optimizers.Adam(),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
@@ -224,10 +281,10 @@ def conv_1d_time_stacked_model(input_size=16000, num_classes=11):
   x = _context_conv(x, 256, 3)
   x = _reduce_conv(x, 384, 3)
   x = _context_conv(x, 384, 3)
-  x = _context_conv(x, 384, 3)  # (12, 384)
+  x = _context_conv(x, 384, 3)  # (14, 384)
 
   x = Dropout(0.15)(x)
-  x = Conv1D(num_classes, 12, activation='softmax', padding='valid')(x)
+  x = Conv1D(num_classes, 14, activation='softmax', padding='valid')(x)
   x = Reshape([-1])(x)
 
   model = Model(input_layer, x, name='conv_1d_time_stacked')
@@ -238,7 +295,7 @@ def conv_1d_time_stacked_model(input_size=16000, num_classes=11):
   return model
 
 
-def conv_1d_lstm_model(input_size=16000, num_classes=11):
+def mobilenet_model(input_size=16000, num_classes=11):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -249,38 +306,22 @@ def conv_1d_lstm_model(input_size=16000, num_classes=11):
   """
   input_layer = Input(shape=[input_size])
   x = input_layer
-  x = Reshape([400, 40])(x)
+  x = Reshape([200, 80], name='time_stack')(x)
   x = PreprocessRaw(x)
 
-  def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
-    x = Conv1D(num_filters, k, padding=padding)(x)
-    x = BatchNormalization()(x)
-    x = Relu6(x)
-    x = MaxPool1D(pool_size=3, strides=strides, padding=padding)(x)
-    return x
-
-  def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
-    x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate)(x)
+  def _conv_1d_bn(x, num_filters, k, strides=1, padding='valid', l2_reg=1e-5):
+    x = Conv1D(num_filters, k, padding=padding, strides=strides,
+               kernel_regularizer=l2(l2_reg), use_bias=False)(x)
     x = BatchNormalization()(x)
     x = Relu6(x)
     return x
-  #                               Same  / Valid
-  x = _context_conv(x, 32, 1)  # (400)  / (400)
-  x = _reduce_conv(x, 64, 3)  # (200)   / (196)
-  x = _context_conv(x, 64, 3)  # (200)  / (194)
-  x = _reduce_conv(x, 96, 3)  # (100)  / (96)
-  x = _context_conv(x, 96, 3)  # (100) / (92)
-  x = _reduce_conv(x, 128, 3)  # (50)   / (45)
-  x = _context_conv(x, 128, 3)  # (50)  / (41)
-  x = _reduce_conv(x, 160, 3)  # (25)   / (20)
-  x = _context_conv(x, 160, 3)  # (25)  / (16)
-  x = _reduce_conv(x, 192, 3)  # (13)   / (7)
-  x = _context_conv(x, 192, 3)  # (13)  / (5)
-  x = LSTM(192, dropout=0.2, recurrent_dropout=0.2)(x)
-  x = Dense(num_classes, activation='softmax')(x)
-  x = Reshape([-1])(x)
 
-  model = Model(input_layer, x, name='conv_1d_lstm')
+  x = _conv_1d_bn(x, 100, 1)
+  x = _conv_1d_bn(x, 100, 3, strides=2, padding='same')
+  x = Reshape([100, 100, 1], name='spongebob')(x)
+  from keras.applications import MobileNet  # noqa
+  model = MobileNet(input_tensor=x, weights=None, classes=num_classes)
+  model.name = "conv_1d_mobilenet"
   model.compile(
       optimizer=keras.optimizers.Adam(),
       loss=keras.losses.categorical_crossentropy,
@@ -475,12 +516,10 @@ def speech_model(model_type, input_size, num_classes=11):
     return simple_model(input_size, num_classes)
   elif model_type == 'snn':
     return snn_model(input_size, num_classes)
-  elif model_type == 'conv_1d':
-    return conv_1d_model(input_size, num_classes)
   elif model_type == 'conv_1d_time':
     return conv_1d_time_stacked_model(input_size, num_classes)
-  elif model_type == 'conv_1d_lstm':
-    return conv_1d_lstm_model(input_size, num_classes)
+  elif model_type == 'conv_1d_simple':
+    return conv_1d_simple_model(input_size, num_classes)
   elif model_type == 'conv_1d_gru':
     return conv_1d_gru_model(input_size, num_classes)
   elif model_type == 'conv_2d':
@@ -489,6 +528,10 @@ def speech_model(model_type, input_size, num_classes=11):
     return conv_2d_fast_model(input_size, num_classes)
   elif model_type == 'conv_2d_mobile':
     return conv_2d_mobile_model(input_size, num_classes)
+  elif model_type == 'mobilenet':
+    return mobilenet_model(input_size, num_classes)
+  elif model_type == 'inception':
+    return conv_1d_inception_model(input_size, num_classes)
   else:
     raise ValueError("Invalid model: %s" % model_type)
 
