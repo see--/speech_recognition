@@ -289,6 +289,99 @@ def conv_1d_time_stacked_model(input_size=16000, num_classes=11):
   return model
 
 
+def conv_inception_d1_model(input_size=16000, num_classes=11):
+  """ Creates a 1D model for temporal data. Note: Use only
+  with compute_mfcc = False (e.g. raw waveform data).
+  Args:
+    input_size: How big the input vector is.
+    num_classes: How many classes are to be recognized.
+  Returns:
+    Compiled keras model
+  """
+  input_layer = Input(shape=[input_size])
+  x = input_layer
+  x = Reshape([400, 40])(x)
+  x = PreprocessRaw(x)
+
+  def _reduce_conv(x, num_filters, k, strides=2, padding='same'):
+    x = Conv1D(num_filters, k, padding=padding, use_bias=False,
+               kernel_regularizer=l2(0.00001))(x)
+    x = BatchNormalization()(x)
+    x = Relu6(x)
+    x = MaxPool1D(pool_size=3, strides=strides, padding=padding)(x)
+    return x
+
+  def _context_conv(x, num_filters, k, dilation_rate=1, padding='same'):
+    x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
+               kernel_regularizer=l2(0.00001), use_bias=False)(x)
+    x = BatchNormalization()(x)
+    x = Relu6(x)
+    return x
+
+  def _inception_block(x, base_num, block_id):
+    branch1x1 = _context_conv(x, int(2 * base_num), 1)
+
+    branch5x5 = _context_conv(x, int(1.5 * base_num), 1)
+    branch5x5 = _context_conv(branch5x5, int(2 * base_num), 3, dilation_rate=2)
+
+    branch3x3dbl = _context_conv(x, int(2 * base_num), 1)
+    branch3x3dbl = _context_conv(
+        branch3x3dbl, int(3 * base_num), 3, dilation_rate=2)
+    branch3x3dbl = _context_conv(
+        branch3x3dbl, int(3 * base_num), 3, dilation_rate=2)
+
+    branch_pool = AveragePooling1D(pool_size=3, strides=1, padding='same')(x)
+    branch_pool = _context_conv(branch_pool, base_num, 1)
+    x = Concatenate(name='mixed%d' % block_id)(
+        [branch1x1, branch5x5, branch3x3dbl, branch_pool])
+    return x
+
+  def _reduce_inception_block(x, base_num, strides, block_id):
+    branch3x3 = _reduce_conv(x, int(6 * base_num), 3, strides=strides)
+
+    branch3x3dbl = _context_conv(x, base_num, 1)
+    branch3x3dbl = _context_conv(branch3x3dbl, int(1.5 * base_num), 3)
+    branch3x3dbl = _reduce_conv(branch3x3dbl, int(1.5 * base_num), 3,
+                                strides=strides, padding='same')
+
+    branch_pool = MaxPool1D(3, strides=strides, padding='same')(x)
+    x = Concatenate(name='mixed%d' % block_id)(
+        [branch3x3, branch3x3dbl, branch_pool])
+    return x
+  # stem: output @ ~100
+  x = _context_conv(x, 64, 1)
+  x = _reduce_conv(x, 96, 3, padding='valid')
+  x = _context_conv(x, 96, 3, padding='valid')
+  x = _reduce_conv(x, 128, 3, padding='valid')
+  # inception block 1: output @ ~50
+  x = _inception_block(x, base_num=16, block_id=1)
+  x = _inception_block(x, base_num=16, block_id=2)
+  x = _reduce_inception_block(x, base_num=32, strides=2, block_id=3)
+  # inception block 2: @ ~24
+  x = _inception_block(x, base_num=32, block_id=4)
+  x = _inception_block(x, base_num=32, block_id=5)
+  x = _reduce_inception_block(x, base_num=32, strides=2, block_id=6)
+  # inception block 3: @ ~12
+  x = _inception_block(x, base_num=32, block_id=7)
+  x = _inception_block(x, base_num=32, block_id=8)
+  x = _reduce_inception_block(x, base_num=32, strides=2, block_id=9)
+  # inception block 4: @ ~6
+  x = _inception_block(x, base_num=32, block_id=10)
+  x = _inception_block(x, base_num=32, block_id=11)
+  x = _reduce_inception_block(x, base_num=32, strides=2, block_id=12)
+
+  x = Dropout(0.2)(x)
+  x = Conv1D(num_classes, 6, activation='softmax')(x)
+  x = Reshape([-1])(x)
+
+  model = Model(input_layer, x, name='inception_d1')
+  model.compile(
+      optimizer=keras.optimizers.SGD(lr=0.001, momentum=0.96),
+      loss=keras.losses.categorical_crossentropy,
+      metrics=[keras.metrics.categorical_accuracy])
+  return model
+
+
 def mobilenet_model(input_size=16000, num_classes=11):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
@@ -526,6 +619,8 @@ def speech_model(model_type, input_size, num_classes=11):
     return mobilenet_model(input_size, num_classes)
   elif model_type == 'inception':
     return conv_1d_inception_model(input_size, num_classes)
+  elif model_type == 'inception_d1':
+    return conv_inception_d1_model(input_size, num_classes)
   else:
     raise ValueError("Invalid model: %s" % model_type)
 
