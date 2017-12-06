@@ -14,16 +14,39 @@ from classes import get_classes, get_int2label
 from IPython import embed  # noqa
 
 
+def map_to_valid(labels):
+    # map '_silence_' to 'silence'
+    labels = [
+        pl if pl != '_silence_' else 'silence' for pl in labels]
+    # map '_unknown_' to 'unknown'
+    labels = [
+        pl if pl != '_unknown_' else 'unknown' for pl in labels]
+    return labels
+
+
+def map_to_wanted(labels, wanted_words):
+  # map unknown words to 'unknown'
+  labels = [
+      pl if pl in wanted_words or pl == 'silence'
+      else 'unknown' for pl in labels]
+  return labels
+
+
 if __name__ == '__main__':
   test_fns = sorted(glob('data/test/audio/*.wav'))
   sess = K.get_session()
-  wanted_only = True
+  use_tta = False
+  tta_volume = 1.2
+  wanted_only = False
+  extend_reversed = True
   compute_mfcc = False
   sample_rate = 16000
   batch_size = 64
   wanted_words = prepare_words_list(get_classes(wanted_only=True))
-  classes = get_classes(wanted_only=wanted_only)
-  int2label = get_int2label(wanted_only=wanted_only)
+  classes = get_classes(
+      wanted_only=wanted_only, extend_reversed=extend_reversed)
+  int2label = get_int2label(
+      wanted_only=wanted_only, extend_reversed=extend_reversed)
   model_settings = prepare_model_settings(
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
       clip_duration_ms=1000, window_size_ms=30.0, window_stride_ms=10.0,
@@ -45,7 +68,7 @@ if __name__ == '__main__':
       wav_decoder.sample_rate,
       dct_coefficient_count=model_settings['dct_coefficient_count'])
   # embed()
-  model = load_model('checkpoints_031/ep-053-vl-0.2193.hdf5')
+  model = load_model('checkpoints_034/ep-057-vl-0.2049.hdf5')
   # In wanted_labels we map the not wanted words to `unknown`. Though we
   # keep track of all labels in `labels`.
   fns, wanted_labels, labels, probabilities = [], [], [], []
@@ -62,56 +85,52 @@ if __name__ == '__main__':
 
     batch_counter += 1
     if batch_counter == batch_size:
-      pred = model.predict(np.float32(X_batch))
-      probabilities.append(pred)
-      pred = pred.argmax(axis=-1)
+      probs = model.predict(np.float32(X_batch))
+      pred = probs.argmax(axis=-1)
+      if use_tta:
+        loud_probs = model.predict(tta_volume * np.float32(X_batch))
+        # average when not 'silence'
+        probs[pred != 0] = 0.5 * (probs[pred != 0] + loud_probs[pred != 0])
+        pred = probs.argmax(axis=-1)
+
+      probabilities.append(probs)
       pred_labels = [int2label[int(p)] for p in pred]
-      # map '_silence_' to 'silence'
-      pred_labels = [
-          pl if pl != '_silence_' else 'silence' for pl in pred_labels]
-      # map '_unknown_' to 'unknown'
-      pred_labels = [
-          pl if pl != '_unknown_' else 'unknown' for pl in pred_labels]
+      pred_labels = map_to_valid(pred_labels)
       labels.extend(pred_labels)
 
-      # map unknown words to 'unknown'
-      pred_labels = [
-          pl if pl in wanted_words or pl == 'silence'
-          else 'unknown' for pl in pred_labels]
+      pred_labels = map_to_wanted(pred_labels, wanted_words)
       wanted_labels.extend(pred_labels)
       # set back counter
       batch_counter, X_batch = 0, []
 
   # process remaining
   if X_batch:
-    pred = model.predict(np.float32(X_batch))
-    probabilities.append(pred)
-    pred = pred.argmax(axis=-1)
+    probs = model.predict(np.float32(X_batch))
+    pred = probs.argmax(axis=-1)
+    if use_tta:
+      loud_probs = model.predict(tta_volume * np.float32(X_batch))
+      # average when not 'silence'
+      probs[pred != 0] = 0.5 * (probs[pred != 0] + loud_probs[pred != 0])
+      pred = probs.argmax(axis=-1)
+
+    probabilities.append(probs)
     pred_labels = [int2label[int(p)] for p in pred]
-    # map '_silence_' to 'silence'
-    pred_labels = [
-        pl if pl != '_silence_' else 'silence' for pl in pred_labels]
-    # map '_unknown_' to 'unknown'
-    pred_labels = [
-        pl if pl != '_unknown_' else 'unknown' for pl in pred_labels]
+    pred_labels = map_to_valid(pred_labels)
     labels.extend(pred_labels)
 
-    # map unknown words to 'unknown'
-    pred_labels = [
-        pl if pl in wanted_words or pl == 'silence'
-        else 'unknown' for pl in pred_labels]
+    pred_labels = map_to_wanted(pred_labels, wanted_words)
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_031.csv', index=False, compression=None)
+      'submission_034.csv', index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_031_all_labels.csv', index=False, compression=None)
+      'submission_034_all_labels.csv', index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
   all_data = pd.DataFrame({'fname': fns, 'label': labels})
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_031_all_labels_probs.csv', index=False, compression=None)
+      'submission_034_all_labels_probs.csv', index=False, compression=None)
   print("Done!")

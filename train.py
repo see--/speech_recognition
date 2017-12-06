@@ -11,7 +11,7 @@ from IPython import embed  # noqa
 
 def data_gen(audio_processor, sess,
              batch_size=128,
-             background_frequency=0.8, background_volume_range=0.2,
+             background_frequency=0.5, background_volume_range=0.2,
              foreground_frequency=0.5, foreground_volume_range=0.2,
              time_shift=(100.0 * 16000.0) / 1000,
              mode='validation'):
@@ -50,12 +50,14 @@ def lr_schedule(ep):
     return base_lr / 10
 
 
-# running_mean: -0.8, running_std: 7.0
-# mfcc running_mean: -0.67, running_std: 7.45
-# background_clamp running_mean: -0.00064, running_std: 0.0774, p5: -0.074, p95: 0.0697  # noqa
+# running_mean: -0.8 | running_std: 7.0
+# mfcc running_mean: -0.67 | running_std: 7.45
+# background_clamp running_mean: -0.00064 | running_std: 0.0774, p5: -0.074, p95: 0.0697  # noqa
+# 10 ** raw - 1.0 running_mean: 0.017 | 10 ** raw - 1.0 running_std: 0.28
 # np.log(11) ~ 2.4
 # np.log(12) ~ 2.5
 # np.log(32) ~ 3.5
+# np.log(48) ~ 3.9
 if __name__ == '__main__':
   sess = K.get_session()
   data_dirs = ['data/train/audio']
@@ -64,8 +66,8 @@ if __name__ == '__main__':
     data_dirs.append('data/pseudo/audio')
   compute_mfcc = False
   sample_rate = 16000
-  batch_size = 100
-  classes = get_classes(wanted_only=False)
+  batch_size = 200
+  classes = get_classes(wanted_only=False, extend_reversed=True)
   model_settings = prepare_model_settings(
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
       clip_duration_ms=1000, window_size_ms=30.0, window_stride_ms=10.0,
@@ -82,13 +84,13 @@ if __name__ == '__main__':
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training')
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation')
   model = speech_model(
-      'conv_1d_simple',
+      'conv_1d_time',
       model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
       num_classes=model_settings['label_count'])
   embed()
   model.fit_generator(
       train_gen, ap.set_size('training') // batch_size,
-      epochs=60, verbose=1, callbacks=[
+      epochs=80, verbose=1, callbacks=[
           LearningRateScheduler(lr_schedule),
           ConfusionMatrixCallback(
               val_gen,
@@ -96,9 +98,9 @@ if __name__ == '__main__':
               wanted_words=prepare_words_list(get_classes(wanted_only=True)),
               all_words=prepare_words_list(classes),
               label2int=ap.word_to_index),
-          TensorBoard(log_dir='logs_032'),
+          TensorBoard(log_dir='logs_035'),
           ModelCheckpoint(
-              'checkpoints_032/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
+              'checkpoints_035/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
 
   eval_res = model.evaluate_generator(
       val_gen, ap.set_size('validation') // batch_size)

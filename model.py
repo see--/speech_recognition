@@ -20,8 +20,7 @@ def preprocess(x):
 
 
 def preprocess_raw(x):
-  # x = K.clip(x, -0.08, 0.08)
-  # x = (x + 0.00064) / 0.0774
+  x = K.pow(10.0, x) - 1.0
   return x
 
 
@@ -127,10 +126,7 @@ def conv_1d_simple_model(input_size=16000, num_classes=11):
   x = _context_conv(x, 288, 3)
 
   x = Bidirectional(GRU(144, dropout=0.1, recurrent_dropout=0.1))(x)
-
-  # x = Dropout(0.15)(x)
-  # x = Conv1D(num_classes, 10, activation='softmax', padding='valid')(x)
-  # x = Reshape([-1])(x)
+  x = Dense(num_classes, activation='softmax')(x)
 
   model = Model(input_layer, x, name='conv_1d_time_stacked')
   model.compile(
@@ -255,41 +251,39 @@ def conv_1d_time_stacked_model(input_size=16000, num_classes=11):
   x = PreprocessRaw(x)
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
-    x = Conv1D(num_filters, k, padding=padding,
+    x = Conv1D(num_filters, k, padding=padding, use_bias=False,
                kernel_regularizer=l2(0.00001))(x)
     x = BatchNormalization()(x)
     x = Relu6(x)
-    x = AveragePooling1D(pool_size=3, strides=strides, padding=padding)(x)
+    x = MaxPool1D(pool_size=3, strides=strides, padding=padding)(x)
     return x
 
   def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
     x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
-               kernel_regularizer=l2(0.00001))(x)
+               kernel_regularizer=l2(0.00001), use_bias=False)(x)
     x = BatchNormalization()(x)
     x = Relu6(x)
     return x
 
-  x = _context_conv(x, 32, 1)
-  x = _reduce_conv(x, 64, 3)
-  x = _context_conv(x, 64, 3)
-  x = _context_conv(x, 64, 3)
+  x = _context_conv(x, 64, 1)
+  x = _reduce_conv(x, 96, 3)
+  x = _context_conv(x, 96, 3)
   x = _reduce_conv(x, 128, 3)
   x = _context_conv(x, 128, 3)
-  x = _context_conv(x, 128, 3)
-  x = _reduce_conv(x, 256, 3)
-  x = _context_conv(x, 256, 3)
-  x = _context_conv(x, 256, 3)
-  x = _reduce_conv(x, 384, 3)
-  x = _context_conv(x, 384, 3)
-  x = _context_conv(x, 384, 3)  # (14, 384)
+  x = _reduce_conv(x, 160, 3)
+  x = _context_conv(x, 160, 3)
+  x = _reduce_conv(x, 192, 3)
+  x = _context_conv(x, 192, 3)
+  x = _reduce_conv(x, 224, 3)
+  x = _context_conv(x, 224, 3)
 
-  x = Dropout(0.15)(x)
-  x = Conv1D(num_classes, 14, activation='softmax', padding='valid')(x)
+  x = Dropout(0.2)(x)
+  x = Conv1D(num_classes, 5, activation='softmax')(x)
   x = Reshape([-1])(x)
 
   model = Model(input_layer, x, name='conv_1d_time_stacked')
   model.compile(
-      optimizer=keras.optimizers.Adam(),
+      optimizer=keras.optimizers.SGD(lr=0.001, momentum=0.96),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
