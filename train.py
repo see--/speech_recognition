@@ -66,8 +66,8 @@ if __name__ == '__main__':
     data_dirs.append('data/pseudo/audio')
   compute_mfcc = False
   sample_rate = 16000
-  batch_size = 200
-  classes = get_classes(wanted_only=False, extend_reversed=True)
+  batch_size = 400
+  classes = get_classes(wanted_only=False, extend_reversed=False)
   model_settings = prepare_model_settings(
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
       clip_duration_ms=1000, window_size_ms=30.0, window_stride_ms=10.0,
@@ -98,9 +98,9 @@ if __name__ == '__main__':
               wanted_words=prepare_words_list(get_classes(wanted_only=True)),
               all_words=prepare_words_list(classes),
               label2int=ap.word_to_index),
-          TensorBoard(log_dir='logs_036'),
+          TensorBoard(log_dir='logs_037'),
           ModelCheckpoint(
-              'checkpoints_036/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
+              'checkpoints_037/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
 
   eval_res = model.evaluate_generator(
       val_gen, ap.set_size('validation') // batch_size)

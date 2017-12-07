@@ -318,7 +318,7 @@ def conv_inception_d1_model(input_size=16000, num_classes=11):
     x = Relu6(x)
     return x
 
-  def _inception_block(x, base_num, block_id):
+  def _inception_block(x, base_num, block_id, dilation_rate=1):
     branch1x1 = _context_conv(x, int(2 * base_num), 1)
 
     branch5x5 = _context_conv(x, int(1.5 * base_num), 1)
@@ -326,9 +326,9 @@ def conv_inception_d1_model(input_size=16000, num_classes=11):
 
     branch3x3dbl = _context_conv(x, int(2 * base_num), 1)
     branch3x3dbl = _context_conv(
-        branch3x3dbl, int(3 * base_num), 3, dilation_rate=2)
+        branch3x3dbl, int(3 * base_num), 3, dilation_rate=dilation_rate)
     branch3x3dbl = _context_conv(
-        branch3x3dbl, int(3 * base_num), 3, dilation_rate=2)
+        branch3x3dbl, int(3 * base_num), 3, dilation_rate=dilation_rate)
 
     branch_pool = AveragePooling1D(pool_size=3, strides=1, padding='same')(x)
     branch_pool = _context_conv(branch_pool, base_num, 1)
@@ -354,11 +354,11 @@ def conv_inception_d1_model(input_size=16000, num_classes=11):
   x = _context_conv(x, 96, 3, padding='valid')
   x = _reduce_conv(x, 128, 3, padding='valid')
   # inception block 1: output @ ~50
-  x = _inception_block(x, base_num=16, block_id=1)
-  x = _inception_block(x, base_num=16, block_id=2)
+  x = _inception_block(x, base_num=16, block_id=1, dilation_rate=2)
+  x = _inception_block(x, base_num=16, block_id=2, dilation_rate=2)
   x = _reduce_inception_block(x, base_num=32, strides=2, block_id=3)
   # inception block 2: @ ~24
-  x = _inception_block(x, base_num=32, block_id=4)
+  x = _inception_block(x, base_num=32, block_id=4, dilation_rate=2)
   x = _inception_block(x, base_num=32, block_id=5)
   x = _reduce_inception_block(x, base_num=32, strides=2, block_id=6)
   # inception block 3: @ ~12
