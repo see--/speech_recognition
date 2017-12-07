@@ -20,7 +20,7 @@ def preprocess(x):
 
 
 def preprocess_raw(x):
-  x = K.pow(10.0, x) - 1.0
+  # x = K.pow(10.0, x) - 1.0
   return x
 
 
@@ -30,7 +30,8 @@ Preprocess = Lambda(preprocess)
 PreprocessRaw = Lambda(preprocess_raw)
 
 
-Relu6 = Lambda(lambda x: K.relu(x, max_value=6))
+def relu6(x):
+  return K.relu(x, max_value=6)
 
 
 def snn_model(input_size=16000, num_classes=11):
@@ -88,14 +89,14 @@ def conv_1d_simple_model(input_size=16000, num_classes=11):
     x = Conv1D(num_filters, k, padding=padding, strides=strides,
                kernel_regularizer=l2(0.00001), use_bias=False)(x)
     x = BatchNormalization()(x)
-    x = Relu6(x)
+    x = Activation(relu6)(x)
     return x
 
   def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
     x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
                kernel_regularizer=l2(0.00001), use_bias=False)(x)
     x = BatchNormalization()(x)
-    x = Relu6(x)
+    x = Activation(relu6)(x)
     return x
 
   x = _reduce_conv(x, 32, 5, strides=4)  # 4000
@@ -154,14 +155,14 @@ def conv_1d_inception_model(input_size=16000, num_classes=11):
     x = Conv1D(num_filters, k, padding=padding, strides=strides,
                kernel_regularizer=l2(0.00001), use_bias=False)(x)
     x = BatchNormalization()(x)
-    x = Relu6(x)
+    x = Activation(relu6)(x)
     return x
 
   def _context_conv(x, num_filters, k, dilation_rate=1, padding='same'):
     x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
                kernel_regularizer=l2(0.00001), use_bias=False)(x)
     x = BatchNormalization()(x)
-    x = Relu6(x)
+    x = Activation(relu6)(x)
     return x
 
   def _stem(x):
@@ -254,7 +255,7 @@ def conv_1d_time_stacked_model(input_size=16000, num_classes=11):
     x = Conv1D(num_filters, k, padding=padding, use_bias=False,
                kernel_regularizer=l2(0.00001))(x)
     x = BatchNormalization()(x)
-    x = Relu6(x)
+    x = Activation(relu6)(x)
     x = MaxPool1D(pool_size=3, strides=strides, padding=padding)(x)
     return x
 
@@ -262,7 +263,7 @@ def conv_1d_time_stacked_model(input_size=16000, num_classes=11):
     x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
                kernel_regularizer=l2(0.00001), use_bias=False)(x)
     x = BatchNormalization()(x)
-    x = Relu6(x)
+    x = Activation(relu6)(x)
     return x
 
   x = _context_conv(x, 64, 1)
@@ -300,14 +301,14 @@ def conv_inception_d1_model(input_size=16000, num_classes=11):
   """
   input_layer = Input(shape=[input_size])
   x = input_layer
-  x = Reshape([400, 40])(x)
+  x = Reshape([800, 20])(x)
   x = PreprocessRaw(x)
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='same'):
     x = Conv1D(num_filters, k, padding=padding, use_bias=False,
                kernel_regularizer=l2(0.00001))(x)
     x = BatchNormalization()(x)
-    x = Relu6(x)
+    x = Activation(relu6)(x)
     x = MaxPool1D(pool_size=3, strides=strides, padding=padding)(x)
     return x
 
@@ -315,7 +316,7 @@ def conv_inception_d1_model(input_size=16000, num_classes=11):
     x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
                kernel_regularizer=l2(0.00001), use_bias=False)(x)
     x = BatchNormalization()(x)
-    x = Relu6(x)
+    x = Activation(relu6)(x)
     return x
 
   def _inception_block(x, base_num, block_id, dilation_rate=1):
@@ -348,14 +349,18 @@ def conv_inception_d1_model(input_size=16000, num_classes=11):
     x = Concatenate(name='mixed%d' % block_id)(
         [branch3x3, branch3x3dbl, branch_pool])
     return x
+
   # stem: output @ ~100
-  x = _context_conv(x, 64, 1)
-  x = _reduce_conv(x, 96, 3, padding='valid')
-  x = _context_conv(x, 96, 3, padding='valid')
+  x = _context_conv(x, 32, 1)
+  x = _reduce_conv(x, 64, 3, padding='valid')
+  x = _context_conv(x, 64, 3, padding='valid')
   x = _reduce_conv(x, 128, 3, padding='valid')
+  x = _context_conv(x, 128, 3, padding='valid')
+  x = _reduce_conv(x, 256, 3, padding='valid')
+  x = _context_conv(x, 256, 3, padding='valid')
   # inception block 1: output @ ~50
-  x = _inception_block(x, base_num=16, block_id=1, dilation_rate=2)
-  x = _inception_block(x, base_num=16, block_id=2, dilation_rate=2)
+  x = _inception_block(x, base_num=32, block_id=1, dilation_rate=2)
+  x = _inception_block(x, base_num=32, block_id=2, dilation_rate=2)
   x = _reduce_inception_block(x, base_num=32, strides=2, block_id=3)
   # inception block 2: @ ~24
   x = _inception_block(x, base_num=32, block_id=4, dilation_rate=2)
@@ -400,7 +405,7 @@ def mobilenet_model(input_size=16000, num_classes=11):
     x = Conv1D(num_filters, k, padding=padding, strides=strides,
                kernel_regularizer=l2(l2_reg), use_bias=False)(x)
     x = BatchNormalization()(x)
-    x = Relu6(x)
+    x = Activation(relu6)(x)
     return x
 
   x = _conv_1d_bn(x, 100, 1)
@@ -434,7 +439,7 @@ def conv_1d_gru_model(input_size=16000, num_classes=11):
     x = Conv1D(num_filters, k, padding=padding,
                kernel_regularizer=l2(0.00001))(x)
     x = BatchNormalization()(x)
-    x = Relu6(x)
+    x = Activation(relu6)(x)
     x = MaxPool1D(pool_size=3, strides=strides, padding=padding)(x)
     return x
 
@@ -442,7 +447,7 @@ def conv_1d_gru_model(input_size=16000, num_classes=11):
     x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
                kernel_regularizer=l2(0.00001))(x)
     x = BatchNormalization()(x)
-    x = Relu6(x)
+    x = Activation(relu6)(x)
     return x
 
   x = _context_conv(x, 32, 1)
@@ -525,7 +530,7 @@ def conv_2d_mobile_model(input_size=16000, num_classes=11):
     x = Conv2D(num_filter, kernel, padding='same',
                strides=strides)(x)
     x = BatchNormalization()(x)
-    x = Relu6(x)
+    x = Activation(relu6)(x)
     return x
 
   x = _conv_bn_relu6(x, 32, strides=2)  # (49, 20)

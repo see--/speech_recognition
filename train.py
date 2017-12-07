@@ -37,7 +37,7 @@ def data_gen(audio_processor, sess,
 
 
 def lr_schedule(ep):
-  base_lr = 0.001
+  base_lr = 0.002
   if ep <= 20:
     return base_lr
   elif 20 < ep <= 30:
@@ -84,10 +84,10 @@ if __name__ == '__main__':
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training')
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation')
   model = speech_model(
-      'inception_d1',
+      'conv_1d_time',
       model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
       num_classes=model_settings['label_count'])
-  # embed()
+  embed()
   model.fit_generator(
       train_gen, ap.set_size('training') // batch_size,
       epochs=100, verbose=1, callbacks=[
@@ -98,9 +98,9 @@ if __name__ == '__main__':
               wanted_words=prepare_words_list(get_classes(wanted_only=True)),
               all_words=prepare_words_list(classes),
               label2int=ap.word_to_index),
-          TensorBoard(log_dir='logs_037'),
+          TensorBoard(log_dir='logs_038'),
           ModelCheckpoint(
-              'checkpoints_037/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
+              'checkpoints_038/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
 
   eval_res = model.evaluate_generator(
       val_gen, ap.set_size('validation') // batch_size)
