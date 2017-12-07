@@ -376,7 +376,7 @@ def conv_inception_d1_model(input_size=16000, num_classes=11):
 
   model = Model(input_layer, x, name='inception_d1')
   model.compile(
-      optimizer=keras.optimizers.SGD(lr=0.001, momentum=0.96),
+      optimizer=keras.optimizers.Adam(lr=0.001),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
