@@ -37,7 +37,7 @@ def data_gen(audio_processor, sess,
 
 
 def lr_schedule(ep):
-  base_lr = 0.002
+  base_lr = 0.001
   if ep <= 20:
     return base_lr
   elif 20 < ep <= 30:
@@ -66,7 +66,7 @@ if __name__ == '__main__':
     data_dirs.append('data/pseudo/audio')
   compute_mfcc = False
   sample_rate = 16000
-  batch_size = 400
+  batch_size = 200
   classes = get_classes(wanted_only=False, extend_reversed=False)
   model_settings = prepare_model_settings(
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
@@ -98,9 +98,9 @@ if __name__ == '__main__':
               wanted_words=prepare_words_list(get_classes(wanted_only=True)),
               all_words=prepare_words_list(classes),
               label2int=ap.word_to_index),
-          TensorBoard(log_dir='logs_038'),
+          TensorBoard(log_dir='logs_039'),
           ModelCheckpoint(
-              'checkpoints_038/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
+              'checkpoints_039/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
 
   eval_res = model.evaluate_generator(
       val_gen, ap.set_size('validation') // batch_size)
