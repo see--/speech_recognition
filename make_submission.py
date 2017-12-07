@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from keras.models import load_model
-from model import prepare_model_settings
+from model import prepare_model_settings, relu6
 from input_data import prepare_words_list
 from classes import get_classes, get_int2label
 from IPython import embed  # noqa
@@ -68,7 +68,8 @@ if __name__ == '__main__':
       wav_decoder.sample_rate,
       dct_coefficient_count=model_settings['dct_coefficient_count'])
   # embed()
-  model = load_model('checkpoints_034/ep-057-vl-0.2049.hdf5')
+  model = load_model('checkpoints_038/ep-036-vl-0.2826.hdf5',
+                     custom_objects={'relu6': relu6})
   # In wanted_labels we map the not wanted words to `unknown`. Though we
   # keep track of all labels in `labels`.
   fns, wanted_labels, labels, probabilities = [], [], [], []
@@ -122,15 +123,15 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_034.csv', index=False, compression=None)
+      'submission_038.csv', index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_034_all_labels.csv', index=False, compression=None)
+      'submission_038_all_labels.csv', index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
   all_data = pd.DataFrame({'fname': fns, 'label': labels})
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_034_all_labels_probs.csv', index=False, compression=None)
+      'submission_038_all_labels_probs.csv', index=False, compression=None)
   print("Done!")
