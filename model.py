@@ -248,7 +248,7 @@ def conv_1d_time_stacked_model(input_size=16000, num_classes=11):
   """
   input_layer = Input(shape=[input_size])
   x = input_layer
-  x = Reshape([400, 40])(x)
+  x = Reshape([800, 20])(x)
   x = PreprocessRaw(x)
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
@@ -266,25 +266,27 @@ def conv_1d_time_stacked_model(input_size=16000, num_classes=11):
     x = Activation(relu6)(x)
     return x
 
-  x = _context_conv(x, 64, 1)
+  x = _context_conv(x, 16, 1)
+  x = _reduce_conv(x, 32, 3)
+  x = _context_conv(x, 32, 3)
+  x = _reduce_conv(x, 64, 3)
+  x = _context_conv(x, 64, 3)
   x = _reduce_conv(x, 96, 3)
   x = _context_conv(x, 96, 3)
   x = _reduce_conv(x, 128, 3)
   x = _context_conv(x, 128, 3)
-  x = _reduce_conv(x, 256, 3)
-  x = _context_conv(x, 256, 3)
-  x = _reduce_conv(x, 320, 3)
-  x = _context_conv(x, 320, 3)
-  x = _reduce_conv(x, 384, 3)
-  x = _context_conv(x, 384, 3)
+  x = _reduce_conv(x, 160, 3)
+  x = _context_conv(x, 160, 3)
+  x = _reduce_conv(x, 192, 3)
+  x = _context_conv(x, 192, 3)
 
-  x = Dropout(0.4)(x)
+  x = Dropout(0.3)(x)
   x = Conv1D(num_classes, 5, activation='softmax')(x)
   x = Reshape([-1])(x)
 
   model = Model(input_layer, x, name='conv_1d_time_stacked')
   model.compile(
-      optimizer=keras.optimizers.SGD(lr=0.001, momentum=0.96),
+      optimizer=keras.optimizers.Adam(lr=0.001),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
