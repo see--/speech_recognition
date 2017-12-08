@@ -67,7 +67,7 @@ if __name__ == '__main__':
     data_dirs.append('data/pseudo/audio')
   compute_mfcc = False
   sample_rate = 16000
-  batch_size = 200
+  batch_size = 100
   classes = get_classes(wanted_only=False, extend_reversed=False)
   model_settings = prepare_model_settings(
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
@@ -88,7 +88,7 @@ if __name__ == '__main__':
       'conv_1d_time',
       model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
       num_classes=model_settings['label_count'])
-  embed()
+  # embed()
   model.fit_generator(
       train_gen, ap.set_size('training') // batch_size,
       epochs=100, verbose=1, callbacks=[
