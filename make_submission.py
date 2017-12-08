@@ -41,7 +41,7 @@ if __name__ == '__main__':
   extend_reversed = True
   compute_mfcc = False
   sample_rate = 16000
-  batch_size = 64
+  batch_size = 32
   wanted_words = prepare_words_list(get_classes(wanted_only=True))
   classes = get_classes(
       wanted_only=wanted_only, extend_reversed=extend_reversed)
@@ -67,9 +67,11 @@ if __name__ == '__main__':
       spectrogram,
       wav_decoder.sample_rate,
       dct_coefficient_count=model_settings['dct_coefficient_count'])
-  # embed()
-  model = load_model('checkpoints_038/ep-036-vl-0.2826.hdf5',
+  model = load_model('checkpoints_039/ep-100-vl-0.2465.hdf5',
                      custom_objects={'relu6': relu6})
+  embed()
+
+
   # In wanted_labels we map the not wanted words to `unknown`. Though we
   # keep track of all labels in `labels`.
   fns, wanted_labels, labels, probabilities = [], [], [], []
@@ -123,15 +125,15 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_038.csv', index=False, compression=None)
+      'submission_017x.csv', index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_038_all_labels.csv', index=False, compression=None)
+      'submission_017x_all_labels.csv', index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
   all_data = pd.DataFrame({'fname': fns, 'label': labels})
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_038_all_labels_probs.csv', index=False, compression=None)
+      'submission_017x_all_labels_probs.csv', index=False, compression=None)
   print("Done!")

@@ -4,3 +4,4 @@ checkpoints*
 *.csv
 *.txt
 *.gz
+*.ipynb

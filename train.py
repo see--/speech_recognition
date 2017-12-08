@@ -37,7 +37,7 @@ def data_gen(audio_processor, sess,
 
 
 def lr_schedule(ep):
-  base_lr = 0.001
+  base_lr = 0.0003
   if ep <= 20:
     return base_lr
   elif 20 < ep <= 30:
@@ -58,6 +58,7 @@ def lr_schedule(ep):
 # np.log(12) ~ 2.5
 # np.log(32) ~ 3.5
 # np.log(48) ~ 3.9
+# 64727 files
 if __name__ == '__main__':
   sess = K.get_session()
   data_dirs = ['data/train/audio']
@@ -98,9 +99,9 @@ if __name__ == '__main__':
               wanted_words=prepare_words_list(get_classes(wanted_only=True)),
               all_words=prepare_words_list(classes),
               label2int=ap.word_to_index),
-          TensorBoard(log_dir='logs_039'),
+          TensorBoard(log_dir='logs_040'),
           ModelCheckpoint(
-              'checkpoints_039/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
+              'checkpoints_040/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
 
   eval_res = model.evaluate_generator(
       val_gen, ap.set_size('validation') // batch_size)
