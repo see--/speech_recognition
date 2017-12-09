@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+import tensorflow as tf
 from keras import backend as K
 from keras.callbacks import ModelCheckpoint, LearningRateScheduler
 from keras.callbacks import TensorBoard
@@ -58,9 +59,12 @@ def lr_schedule(ep):
 # np.log(12) ~ 2.5
 # np.log(32) ~ 3.5
 # np.log(48) ~ 3.9
-# 64727 files
+# 64727 training files
 if __name__ == '__main__':
-  sess = K.get_session()
+  # restrict gpu usage: https://stackoverflow.com/questions/34199233/how-to-prevent-tensorflow-from-allocating-the-totality-of-a-gpu-memory  # noqa
+  gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.8)
+  sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+  K.set_session(sess)
   data_dirs = ['data/train/audio']
   add_pseudo = True
   if add_pseudo:
