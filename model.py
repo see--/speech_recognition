@@ -266,11 +266,9 @@ def conv_1d_time_stacked_model(input_size=16000, num_classes=11):
     x = Activation(relu6)(x)
     return x
 
-  x = _context_conv(x, 16, 1)
-  x = _reduce_conv(x, 32, 3)
-  x = _context_conv(x, 32, 3)
-  x = _reduce_conv(x, 64, 3)
-  x = _context_conv(x, 64, 3)
+  x = _context_conv(x, 32, 1)
+  x = _reduce_conv(x, 48, 3)
+  x = _context_conv(x, 48, 3)
   x = _reduce_conv(x, 96, 3)
   x = _context_conv(x, 96, 3)
   x = _reduce_conv(x, 128, 3)
@@ -279,6 +277,8 @@ def conv_1d_time_stacked_model(input_size=16000, num_classes=11):
   x = _context_conv(x, 160, 3)
   x = _reduce_conv(x, 192, 3)
   x = _context_conv(x, 192, 3)
+  x = _reduce_conv(x, 256, 3)
+  x = _context_conv(x, 256, 3)
 
   x = Dropout(0.3)(x)
   x = Conv1D(num_classes, 5, activation='softmax')(x)
