@@ -57,7 +57,7 @@ if __name__ == '__main__':
     data_dirs.append('data/pseudo/audio')
   compute_mfcc = False
   sample_rate = 16000
-  batch_size = 384
+  batch_size = 160
   classes = get_classes(wanted_only=False, extend_reversed=False)
   model_settings = prepare_model_settings(
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
@@ -66,7 +66,7 @@ if __name__ == '__main__':
   ap = AudioProcessor(
       data_dirs=data_dirs,
       silence_percentage=15.0,
-      unknown_percentage=0.0,
+      unknown_percentage=6.0,
       wanted_words=classes,
       validation_percentage=10.0,
       testing_percentage=0.0,
@@ -88,9 +88,9 @@ if __name__ == '__main__':
               wanted_words=prepare_words_list(get_classes(wanted_only=True)),
               all_words=prepare_words_list(classes),
               label2int=ap.word_to_index),
-          TensorBoard(log_dir='logs_043'),
+          TensorBoard(log_dir='logs_044'),
           ModelCheckpoint(
-              'checkpoints_043/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5'),
+              'checkpoints_044/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5'),
           ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                             factor=0.5, patience=3, verbose=1)])
 

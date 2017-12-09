@@ -286,7 +286,7 @@ def conv_1d_time_stacked_model(input_size=16000, num_classes=11):
 
   model = Model(input_layer, x, name='conv_1d_time_stacked')
   model.compile(
-      optimizer=keras.optimizers.Adam(lr=0.001),
+      optimizer=keras.optimizers.Adam(lr=3e-4),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
