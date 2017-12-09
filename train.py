@@ -1,6 +1,7 @@
 from __future__ import division, print_function
+import tensorflow as tf
 from keras import backend as K
-from keras.callbacks import ModelCheckpoint, LearningRateScheduler
+from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau
 from keras.callbacks import TensorBoard
 from callbacks import ConfusionMatrixCallback
 from model import speech_model, prepare_model_settings
@@ -36,20 +37,6 @@ def data_gen(audio_processor, sess,
     yield X, y
 
 
-def lr_schedule(ep):
-  base_lr = 0.001
-  if ep <= 20:
-    return base_lr
-  elif 20 < ep <= 30:
-    return base_lr / 2
-  elif 30 < ep <= 40:
-    return base_lr / 4
-  elif 40 < ep <= 50:
-    return base_lr / 8
-  else:
-    return base_lr / 10
-
-
 # running_mean: -0.8 | running_std: 7.0
 # mfcc running_mean: -0.67 | running_std: 7.45
 # background_clamp running_mean: -0.00064 | running_std: 0.0774, p5: -0.074, p95: 0.0697  # noqa
@@ -58,16 +45,19 @@ def lr_schedule(ep):
 # np.log(12) ~ 2.5
 # np.log(32) ~ 3.5
 # np.log(48) ~ 3.9
-# 64727 files
+# 64727 training files
 if __name__ == '__main__':
-  sess = K.get_session()
+  # restrict gpu usage: https://stackoverflow.com/questions/34199233/how-to-prevent-tensorflow-from-allocating-the-totality-of-a-gpu-memory  # noqa
+  gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.8)
+  sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+  K.set_session(sess)
   data_dirs = ['data/train/audio']
   add_pseudo = True
   if add_pseudo:
     data_dirs.append('data/pseudo/audio')
   compute_mfcc = False
   sample_rate = 16000
-  batch_size = 400
+  batch_size = 384
   classes = get_classes(wanted_only=False, extend_reversed=False)
   model_settings = prepare_model_settings(
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
@@ -88,11 +78,10 @@ if __name__ == '__main__':
       'conv_1d_time',
       model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
       num_classes=model_settings['label_count'])
-  embed()
+  # embed()
   model.fit_generator(
       train_gen, ap.set_size('training') // batch_size,
       epochs=100, verbose=1, callbacks=[
-          LearningRateScheduler(lr_schedule),
           ConfusionMatrixCallback(
               val_gen,
               ap.set_size('validation') // batch_size,
@@ -101,7 +90,9 @@ if __name__ == '__main__':
               label2int=ap.word_to_index),
           TensorBoard(log_dir='logs_042'),
           ModelCheckpoint(
-              'checkpoints_042/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
+              'checkpoints_042/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5'),
+          ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
+                            factor=0.5, patience=3, verbose=1)])
 
   eval_res = model.evaluate_generator(
       val_gen, ap.set_size('validation') // batch_size)
