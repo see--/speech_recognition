@@ -52,12 +52,12 @@ if __name__ == '__main__':
   sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
   K.set_session(sess)
   data_dirs = ['data/train/audio']
-  add_pseudo = False
+  add_pseudo = True
   if add_pseudo:
     data_dirs.append('data/pseudo/audio')
   compute_mfcc = False
   sample_rate = 16000
-  batch_size = 100
+  batch_size = 384
   classes = get_classes(wanted_only=False, extend_reversed=False)
   model_settings = prepare_model_settings(
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
@@ -82,8 +82,6 @@ if __name__ == '__main__':
   model.fit_generator(
       train_gen, ap.set_size('training') // batch_size,
       epochs=100, verbose=1, callbacks=[
-          ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
-                            factor=0.5, patience=2, verbose=1),
           ConfusionMatrixCallback(
               val_gen,
               ap.set_size('validation') // batch_size,
@@ -92,7 +90,9 @@ if __name__ == '__main__':
               label2int=ap.word_to_index),
           TensorBoard(log_dir='logs_042'),
           ModelCheckpoint(
-              'checkpoints_042/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')])
+              'checkpoints_042/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5'),
+          ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
+                            factor=0.5, patience=3, verbose=1)])
 
   eval_res = model.evaluate_generator(
       val_gen, ap.set_size('validation') // batch_size)
