@@ -707,10 +707,12 @@ def conv_1d_multi_time_sliced_model(input_size=16000, num_classes=11):
   input_layer = Input(shape=[input_size])
   x = input_layer
   x = PreprocessRaw(x)
-  x800 = Lambda(lambda x: time_slice_stack(x, 20))(x)
-  x400 = Lambda(lambda x: time_slice_stack(x, 40))(x)
-  x200 = Lambda(lambda x: time_slice_stack(x, 80))(x)
-  x100 = Lambda(lambda x: time_slice_stack(x, 160))(x)
+
+  xs10 = Lambda(lambda x: time_slice_stack(x, 10))(x)
+  xs20 = Lambda(lambda x: time_slice_stack(x, 20))(x)
+  xs40 = Lambda(lambda x: time_slice_stack(x, 40))(x)
+  xs80 = Lambda(lambda x: time_slice_stack(x, 80))(x)
+  xs160 = Lambda(lambda x: time_slice_stack(x, 160))(x)
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='same'):
     x = Conv1D(num_filters, k, padding=padding, use_bias=False,
@@ -727,28 +729,31 @@ def conv_1d_multi_time_sliced_model(input_size=16000, num_classes=11):
     x = Activation(relu6)(x)
     return x
 
-  x = _context_conv(x800, 32, 3)
+  x = _context_conv(xs10, 16, 3)
+  x = _reduce_conv(x, 32, 3)
+  x = _context_conv(x, 32, 3)
+  x = Concatenate(axis=-1)([x, xs20])
   x = _reduce_conv(x, 48, 3)
   x = _context_conv(x, 64, 3)
-  x = Concatenate(axis=-1)([x, x400])
+  x = Concatenate(axis=-1)([x, xs40])
   x = _reduce_conv(x, 96, 3)
   x = _context_conv(x, 96, 3)
-  x = Concatenate(axis=-1)([x, x200])
+  x = Concatenate(axis=-1)([x, xs80])
   x = _reduce_conv(x, 128, 3)
   x = _context_conv(x, 128, 3)
-  x = Concatenate(axis=-1)([x, x100])
-  x = _reduce_conv(x, 160, 3)
-  x = _context_conv(x, 160, 3)
-  x = _reduce_conv(x, 192, 3)
-  x = _context_conv(x, 192, 3)
-  x = _reduce_conv(x, 256, 3)
-  x = _context_conv(x, 256, 3)
+  x = Concatenate(axis=-1)([x, xs160])
+  x = _reduce_conv(x, 160, 3, padding='valid')
+  x = _context_conv(x, 160, 3, padding='valid')
+  x = _reduce_conv(x, 192, 3, padding='valid')
+  x = _context_conv(x, 192, 3, padding='valid')
+  x = _reduce_conv(x, 256, 3, padding='valid')
+  x = _context_conv(x, 256, 3, padding='valid')
 
   x = Dropout(0.3)(x)
-  x = Conv1D(num_classes, 13, activation='softmax')(x)
+  x = Conv1D(num_classes, 6, activation='softmax')(x)
   x = Reshape([-1])(x)
 
-  model = Model(input_layer, x, name='conv_1d_time_sliced')
+  model = Model(input_layer, x, name='conv_1d_multi_time_sliced')
   model.compile(
       optimizer=keras.optimizers.Adam(lr=3e-4),
       loss=keras.losses.categorical_crossentropy,
