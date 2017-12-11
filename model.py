@@ -34,6 +34,16 @@ def relu6(x):
   return K.relu(x, max_value=6)
 
 
+def time_slice_stack(x, step):
+    x_slices = []
+    for i in range(step):
+        x_slice = x[:, i::step]
+        x_slice = K.expand_dims(x_slice, axis=-1)
+        x_slices.append(x_slice)
+    x_slices = K.concatenate(x_slices, axis=-1)
+    return x_slices
+
+
 def snn_model(input_size=16000, num_classes=11):
   input_layer = Input(shape=[input_size])
   activation = 'selu'
@@ -286,7 +296,7 @@ def conv_1d_time_stacked_model(input_size=16000, num_classes=11):
 
   model = Model(input_layer, x, name='conv_1d_time_stacked')
   model.compile(
-      optimizer=keras.optimizers.Adam(lr=0.001),
+      optimizer=keras.optimizers.Adam(lr=3e-4),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
@@ -389,7 +399,7 @@ def conv_inception_d1_model(input_size=16000, num_classes=11):
   return model
 
 
-def mobilenet_model(input_size=16000, num_classes=11):
+def conv_1d_heavy_model(input_size=16000, num_classes=11):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -400,24 +410,51 @@ def mobilenet_model(input_size=16000, num_classes=11):
   """
   input_layer = Input(shape=[input_size])
   x = input_layer
-  x = Reshape([200, 80], name='time_stack')(x)
+  x = Reshape([1600, 10])(x)
   x = PreprocessRaw(x)
 
-  def _conv_1d_bn(x, num_filters, k, strides=1, padding='valid', l2_reg=1e-5):
-    x = Conv1D(num_filters, k, padding=padding, strides=strides,
-               kernel_regularizer=l2(l2_reg), use_bias=False)(x)
+  def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
+    x = Conv1D(num_filters, k, padding=padding, use_bias=False,
+               kernel_regularizer=l2(0.00001))(x)
+    x = BatchNormalization()(x)
+    x = Activation(relu6)(x)
+    x = MaxPool1D(pool_size=3, strides=strides, padding=padding)(x)
+    return x
+
+  def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
+    x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
+               kernel_regularizer=l2(0.00001), use_bias=False)(x)
     x = BatchNormalization()(x)
     x = Activation(relu6)(x)
     return x
 
-  x = _conv_1d_bn(x, 100, 1)
-  x = _conv_1d_bn(x, 100, 3, strides=2, padding='same')
-  x = Reshape([100, 100, 1], name='spongebob')(x)
-  from keras.applications import MobileNet  # noqa
-  model = MobileNet(input_tensor=x, weights=None, classes=num_classes)
-  model.name = "conv_1d_mobilenet"
+  x = _context_conv(x, 32, 1)
+  x = _reduce_conv(x, 48, 3)
+  x = _context_conv(x, 48, 3)
+  x = _reduce_conv(x, 96, 3)
+  x = _context_conv(x, 96, 3)
+  x = _reduce_conv(x, 128, 3)
+  x = _context_conv(x, 128, 3)
+  x = _reduce_conv(x, 160, 3)
+  x = _context_conv(x, 160, 3)
+  x = _reduce_conv(x, 192, 3)
+  x = _context_conv(x, 192, 3)
+  x = _reduce_conv(x, 256, 3)
+  x = _context_conv(x, 256, 3)
+  x = _reduce_conv(x, 320, 3)
+  x = _context_conv(x, 320, 3)
+
+  x = Dropout(0.3)(x)
+  x = Conv1D(128, 5, use_bias=False)(x)
+  x = BatchNormalization()(x)
+  x = Activation(relu6)(x)
+  x = Dropout(0.1)(x)
+  x = Conv1D(num_classes, 1, activation='softmax', use_bias=False)(x)
+  x = Reshape([-1])(x)
+
+  model = Model(input_layer, x, name='conv_1d_time_stacked')
   model.compile(
-      optimizer=keras.optimizers.Adam(),
+      optimizer=keras.optimizers.Adam(lr=3e-4),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
@@ -605,13 +642,70 @@ def conv_2d_fast_model(input_size=16000, num_classes=11):
   return model
 
 
+def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
+  """ Creates a 1D model for temporal data. Note: Use only
+  with compute_mfcc = False (e.g. raw waveform data).
+  Args:
+    input_size: How big the input vector is.
+    num_classes: How many classes are to be recognized.
+  Returns:
+    Compiled keras model
+  """
+  input_layer = Input(shape=[input_size])
+  x = input_layer
+  x = Lambda(lambda x: time_slice_stack(x, 40))(x)
+  x = PreprocessRaw(x)
+
+  def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
+    x = Conv1D(num_filters, k, padding=padding, use_bias=False,
+               kernel_regularizer=l2(0.00001))(x)
+    x = BatchNormalization()(x)
+    x = Activation(relu6)(x)
+    x = MaxPool1D(pool_size=3, strides=strides, padding=padding)(x)
+    return x
+
+  def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
+    x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
+               kernel_regularizer=l2(0.00001), use_bias=False)(x)
+    x = BatchNormalization()(x)
+    x = Activation(relu6)(x)
+    return x
+
+  x = _context_conv(x, 32, 3)
+  x = _reduce_conv(x, 48, 3)
+  x = _context_conv(x, 48, 3)
+  x = _reduce_conv(x, 96, 3)
+  x = _context_conv(x, 96, 3)
+  x = _reduce_conv(x, 128, 3)
+  x = _context_conv(x, 128, 3)
+  x = _reduce_conv(x, 160, 3)
+  x = _context_conv(x, 160, 3)
+  x = _reduce_conv(x, 192, 3)
+  x = _context_conv(x, 192, 3)
+
+  x = Dropout(0.3)(x)
+  x = Conv1D(num_classes, 5, activation='softmax')(x)
+  x = Reshape([-1])(x)
+
+  model = Model(input_layer, x, name='conv_1d_time_sliced')
+  model.compile(
+      optimizer=keras.optimizers.Adam(lr=3e-4),
+      loss=keras.losses.categorical_crossentropy,
+      metrics=[keras.metrics.categorical_accuracy])
+  return model
+
+
 def speech_model(model_type, input_size, num_classes=11):
   if model_type == 'simple':
     return simple_model(input_size, num_classes)
   elif model_type == 'snn':
     return snn_model(input_size, num_classes)
-  elif model_type == 'conv_1d_time':
+  elif model_type == 'conv_1d_time_stacked':
     return conv_1d_time_stacked_model(input_size, num_classes)
+  elif model_type == 'conv_1d_time_sliced':
+    return conv_1d_time_sliced_model(input_size, num_classes)
+  elif model_type == 'conv_1d_heavy':
+    return conv_1d_heavy_model(input_size, num_classes)
   elif model_type == 'conv_1d_simple':
     return conv_1d_simple_model(input_size, num_classes)
   elif model_type == 'conv_1d_gru':
@@ -622,8 +716,6 @@ def speech_model(model_type, input_size, num_classes=11):
     return conv_2d_fast_model(input_size, num_classes)
   elif model_type == 'conv_2d_mobile':
     return conv_2d_mobile_model(input_size, num_classes)
-  elif model_type == 'mobilenet':
-    return mobilenet_model(input_size, num_classes)
   elif model_type == 'inception':
     return conv_1d_inception_model(input_size, num_classes)
   elif model_type == 'inception_d1':
