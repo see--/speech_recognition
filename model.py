@@ -711,7 +711,7 @@ def conv_1d_multi_time_sliced_model(input_size=16000, num_classes=11):
                kernel_regularizer=l2(0.00001))(x)
     x = BatchNormalization()(x)
     x = Activation(relu6)(x)
-    x = MaxPool1D(pool_size=3, strides=strides, padding=padding)(x)
+    x = MaxPool1D(pool_size=3, strides=strides, padding='same')(x)
     return x
 
   def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
@@ -721,48 +721,53 @@ def conv_1d_multi_time_sliced_model(input_size=16000, num_classes=11):
     x = Activation(relu6)(x)
     return x
 
+  xs4 = Reshape([4000, 4])(x)  # 4000Hz
+  xs4 = _reduce_conv(xs4, 16, 3)
+  xs4 = _reduce_conv(xs4, 32, 3)
+  xs4 = _reduce_conv(xs4, 48, 3)
+  xs4 = _reduce_conv(xs4, 64, 3)
+  xs4 = _reduce_conv(xs4, 96, 3)
+  xs4 = _reduce_conv(xs4, 128, 3)
+  xs4 = _reduce_conv(xs4, 160, 3)
+  xs4 = _context_conv(xs4, 160, 3)
+  xs4a = _context_conv(xs4, 64, 28)
+  xs4 = _reduce_conv(xs4, 192, 3)
+  xs4 = _context_conv(xs4, 192, 3)
+  xs4b = _context_conv(xs4, 64, 11)
+
+  xs5 = Reshape([3200, 5])(x)  # 3200Hz
+  xs5 = _reduce_conv(xs5, 16, 3)
+  xs5 = _reduce_conv(xs5, 32, 3)
+  xs5 = _reduce_conv(xs5, 48, 3)
+  xs5 = _reduce_conv(xs5, 64, 3)
+  xs5 = _reduce_conv(xs5, 96, 3)
+  xs5 = _reduce_conv(xs5, 128, 3)
+  xs5 = _reduce_conv(xs5, 160, 3)
+  xs5 = _context_conv(xs5, 160, 3)
+  xs5a = _context_conv(xs5, 64, 22)
+  xs5 = _reduce_conv(xs5, 192, 3)
+  xs5 = _context_conv(xs5, 192, 3)
+  xs5b = _context_conv(xs5, 64, 8)
+
   xs25 = Reshape([640, 25])(x)  # 640Hz
   xs25 = _reduce_conv(xs25, 32, 3)
-  xs25 = _context_conv(xs25, 32, 3)
   xs25 = _reduce_conv(xs25, 48, 3)
-  xs25 = _context_conv(xs25, 48, 3)
   xs25 = _reduce_conv(xs25, 64, 3)
-  xs25 = _context_conv(xs25, 64, 3)
   xs25 = _reduce_conv(xs25, 96, 3)
-  xs25 = _context_conv(xs25, 96, 3)
-  xs25 = Dropout(0.2)(xs25)
-  xs25 = _context_conv(xs25, 64, 33)
+  xs25 = _reduce_conv(xs25, 128, 3)
+  xs25 = _context_conv(xs25, 128, 3)
+  xs25 = _context_conv(xs25, 64, 17)
 
-  xs32 = Reshape([500, 32])(x)  # 500Hz
-  xs32 = _reduce_conv(xs32, 32, 3)
-  xs32 = _context_conv(xs32, 32, 3)
-  xs32 = _reduce_conv(xs32, 48, 3)
-  xs32 = _context_conv(xs32, 48, 3)
-  xs32 = _reduce_conv(xs32, 64, 3)
-  xs32 = _context_conv(xs32, 64, 3)
-  xs32 = _reduce_conv(xs32, 96, 3)
-  xs32 = _context_conv(xs32, 96, 3)
-  xs32 = Dropout(0.2)(xs32)
-  xs32 = _context_conv(xs32, 64, 24)
-
-  xs40 = Reshape([400, 40])(x)  # 400Hz
-  xs40 = _reduce_conv(xs40, 48, 3)
-  xs40 = _context_conv(xs40, 48, 3)
-  xs40 = _reduce_conv(xs40, 64, 3)
-  xs40 = _context_conv(xs40, 64, 3)
-  xs40 = _reduce_conv(xs40, 96, 3)
-  xs40 = _context_conv(xs40, 96, 3)
-  xs40 = _reduce_conv(xs40, 128, 3)
-  xs40 = _context_conv(xs40, 128, 3)
-  xs40 = Dropout(0.2)(xs40)
-  xs40 = _context_conv(xs40, 64, 18)
-
-  x = Concatenate(axis=-1)([xs25, xs32, xs40])
+  x = Concatenate(axis=-1)(
+      [xs4a, xs4b, xs5a, xs5b, xs25])
+  x = Dropout(0.1)(x)
+  x = _context_conv(x, 128, 1)
   x = Dropout(0.1)(x)
   x = Conv1D(num_classes, 1, activation='softmax')(x)
   x = Reshape([-1])(x)
 
   model = Model(input_layer, x, name='conv_1d_multi_time_sliced')
+
   model.compile(
       optimizer=keras.optimizers.RMSprop(lr=1e-3),
       loss=keras.losses.categorical_crossentropy,
