@@ -708,11 +708,11 @@ def conv_1d_multi_time_sliced_model(input_size=16000, num_classes=11):
   x = input_layer
   x = PreprocessRaw(x)
 
-  xs10 = Lambda(lambda x: time_slice_stack(x, 10))(x)
-  xs20 = Lambda(lambda x: time_slice_stack(x, 20))(x)
-  xs40 = Lambda(lambda x: time_slice_stack(x, 40))(x)
-  xs80 = Lambda(lambda x: time_slice_stack(x, 80))(x)
-  xs160 = Lambda(lambda x: time_slice_stack(x, 160))(x)
+  xs10 = Reshape([1600, 10])(x)  # 1600Hz
+  xs20 = Reshape([800, 20])(x)  # 800Hz
+  xs40 = Reshape([400, 40])(x)  # 400 Hz
+  xs80 = Reshape([200, 80])(x)  # 200 Hz
+  xs160 = Reshape([100, 160])(x)  # 100 Hz
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='same'):
     x = Conv1D(num_filters, k, padding=padding, use_bias=False,
@@ -755,7 +755,7 @@ def conv_1d_multi_time_sliced_model(input_size=16000, num_classes=11):
 
   model = Model(input_layer, x, name='conv_1d_multi_time_sliced')
   model.compile(
-      optimizer=keras.optimizers.Adam(lr=3e-4),
+      optimizer=keras.optimizers.Adam(lr=1e-3),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
