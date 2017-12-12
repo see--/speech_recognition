@@ -97,14 +97,14 @@ def conv_1d_simple_model(input_size=16000, num_classes=11):
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
     x = Conv1D(num_filters, k, padding=padding, strides=strides,
-               kernel_regularizer=l2(0.00001), use_bias=False)(x)
+               kernel_regularizer=l2(0.00001), use_bias=True)(x)
     x = BatchNormalization()(x)
     x = Activation(relu6)(x)
     return x
 
   def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
     x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
-               kernel_regularizer=l2(0.00001), use_bias=False)(x)
+               kernel_regularizer=l2(0.00001), use_bias=True)(x)
     x = BatchNormalization()(x)
     x = Activation(relu6)(x)
     return x
@@ -163,14 +163,14 @@ def conv_1d_inception_model(input_size=16000, num_classes=11):
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='same'):
     x = Conv1D(num_filters, k, padding=padding, strides=strides,
-               kernel_regularizer=l2(0.00001), use_bias=False)(x)
+               kernel_regularizer=l2(0.00001), use_bias=True)(x)
     x = BatchNormalization()(x)
     x = Activation(relu6)(x)
     return x
 
   def _context_conv(x, num_filters, k, dilation_rate=1, padding='same'):
     x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
-               kernel_regularizer=l2(0.00001), use_bias=False)(x)
+               kernel_regularizer=l2(0.00001), use_bias=True)(x)
     x = BatchNormalization()(x)
     x = Activation(relu6)(x)
     return x
@@ -262,7 +262,7 @@ def conv_1d_time_stacked_model(input_size=16000, num_classes=11):
   x = PreprocessRaw(x)
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
-    x = Conv1D(num_filters, k, padding=padding, use_bias=False,
+    x = Conv1D(num_filters, k, padding=padding, use_bias=True,
                kernel_regularizer=l2(0.00001))(x)
     x = BatchNormalization()(x)
     x = Activation(relu6)(x)
@@ -271,7 +271,7 @@ def conv_1d_time_stacked_model(input_size=16000, num_classes=11):
 
   def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
     x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
-               kernel_regularizer=l2(0.00001), use_bias=False)(x)
+               kernel_regularizer=l2(0.00001), use_bias=True)(x)
     x = BatchNormalization()(x)
     x = Activation(relu6)(x)
     return x
@@ -317,7 +317,7 @@ def conv_inception_d1_model(input_size=16000, num_classes=11):
   x = PreprocessRaw(x)
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='same'):
-    x = Conv1D(num_filters, k, padding=padding, use_bias=False,
+    x = Conv1D(num_filters, k, padding=padding, use_bias=True,
                kernel_regularizer=l2(0.00001))(x)
     x = BatchNormalization()(x)
     x = Activation(relu6)(x)
@@ -326,7 +326,7 @@ def conv_inception_d1_model(input_size=16000, num_classes=11):
 
   def _context_conv(x, num_filters, k, dilation_rate=1, padding='same'):
     x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
-               kernel_regularizer=l2(0.00001), use_bias=False)(x)
+               kernel_regularizer=l2(0.00001), use_bias=True)(x)
     x = BatchNormalization()(x)
     x = Activation(relu6)(x)
     return x
@@ -414,7 +414,7 @@ def conv_1d_heavy_model(input_size=16000, num_classes=11):
   x = PreprocessRaw(x)
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
-    x = Conv1D(num_filters, k, padding=padding, use_bias=False,
+    x = Conv1D(num_filters, k, padding=padding, use_bias=True,
                kernel_regularizer=l2(0.00001))(x)
     x = BatchNormalization()(x)
     x = Activation(relu6)(x)
@@ -423,7 +423,7 @@ def conv_1d_heavy_model(input_size=16000, num_classes=11):
 
   def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
     x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
-               kernel_regularizer=l2(0.00001), use_bias=False)(x)
+               kernel_regularizer=l2(0.00001), use_bias=True)(x)
     x = BatchNormalization()(x)
     x = Activation(relu6)(x)
     return x
@@ -445,11 +445,11 @@ def conv_1d_heavy_model(input_size=16000, num_classes=11):
   x = _context_conv(x, 320, 3)
 
   x = Dropout(0.3)(x)
-  x = Conv1D(128, 5, use_bias=False)(x)
+  x = Conv1D(128, 5, use_bias=True)(x)
   x = BatchNormalization()(x)
   x = Activation(relu6)(x)
   x = Dropout(0.1)(x)
-  x = Conv1D(num_classes, 1, activation='softmax', use_bias=False)(x)
+  x = Conv1D(num_classes, 1, activation='softmax', use_bias=True)(x)
   x = Reshape([-1])(x)
 
   model = Model(input_layer, x, name='conv_1d_time_stacked')
@@ -657,7 +657,7 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
   x = PreprocessRaw(x)
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
-    x = Conv1D(num_filters, k, padding=padding, use_bias=False,
+    x = Conv1D(num_filters, k, padding=padding, use_bias=True,
                kernel_regularizer=l2(0.00001))(x)
     x = BatchNormalization()(x)
     x = Activation(relu6)(x)
@@ -666,7 +666,7 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
 
   def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
     x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
-               kernel_regularizer=l2(0.00001), use_bias=False)(x)
+               kernel_regularizer=l2(0.00001), use_bias=True)(x)
     x = BatchNormalization()(x)
     x = Activation(relu6)(x)
     return x
@@ -715,7 +715,7 @@ def conv_1d_multi_time_sliced_model(input_size=16000, num_classes=11):
   xs160 = Reshape([100, 160])(x)  # 100 Hz
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='same'):
-    x = Conv1D(num_filters, k, padding=padding, use_bias=False,
+    x = Conv1D(num_filters, k, padding=padding, use_bias=True,
                kernel_regularizer=l2(0.00001))(x)
     x = BatchNormalization()(x)
     x = Activation(relu6)(x)
@@ -724,7 +724,7 @@ def conv_1d_multi_time_sliced_model(input_size=16000, num_classes=11):
 
   def _context_conv(x, num_filters, k, dilation_rate=1, padding='same'):
     x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
-               kernel_regularizer=l2(0.00001), use_bias=False)(x)
+               kernel_regularizer=l2(0.00001), use_bias=True)(x)
     x = BatchNormalization()(x)
     x = Activation(relu6)(x)
     return x
