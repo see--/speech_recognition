@@ -220,8 +220,6 @@ def conv_1d_inception_model(input_size=16000, num_classes=11):
         [branch3x3, branch3x3dbl, branch_pool])
     return x
 
-  # from IPython import embed
-  # embed()
   x = _stem(x)
   x = _inception_block(x, base_num=32, block_id=1)
   x = _inception_block(x, base_num=16, block_id=2)
@@ -708,13 +706,7 @@ def conv_1d_multi_time_sliced_model(input_size=16000, num_classes=11):
   x = input_layer
   x = PreprocessRaw(x)
 
-  xs10 = Reshape([1600, 10])(x)  # 1600Hz
-  xs20 = Reshape([800, 20])(x)  # 800Hz
-  xs40 = Reshape([400, 40])(x)  # 400 Hz
-  xs80 = Reshape([200, 80])(x)  # 200 Hz
-  xs160 = Reshape([100, 160])(x)  # 100 Hz
-
-  def _reduce_conv(x, num_filters, k, strides=2, padding='same'):
+  def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
     x = Conv1D(num_filters, k, padding=padding, use_bias=True,
                kernel_regularizer=l2(0.00001))(x)
     x = BatchNormalization()(x)
@@ -722,35 +714,52 @@ def conv_1d_multi_time_sliced_model(input_size=16000, num_classes=11):
     x = MaxPool1D(pool_size=3, strides=strides, padding=padding)(x)
     return x
 
-  def _context_conv(x, num_filters, k, dilation_rate=1, padding='same'):
+  def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
     x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
                kernel_regularizer=l2(0.00001), use_bias=True)(x)
     x = BatchNormalization()(x)
     x = Activation(relu6)(x)
     return x
 
-  x = _context_conv(xs10, 16, 3)
-  x = _reduce_conv(x, 32, 3)
-  x = _context_conv(x, 32, 3)
-  x = Concatenate(axis=-1)([x, xs20])
-  x = _reduce_conv(x, 48, 3)
-  x = _context_conv(x, 64, 3)
-  x = Concatenate(axis=-1)([x, xs40])
-  x = _reduce_conv(x, 96, 3)
-  x = _context_conv(x, 96, 3)
-  x = Concatenate(axis=-1)([x, xs80])
-  x = _reduce_conv(x, 128, 3)
-  x = _context_conv(x, 128, 3)
-  x = Concatenate(axis=-1)([x, xs160])
-  x = _reduce_conv(x, 160, 3, padding='valid')
-  x = _context_conv(x, 160, 3, padding='valid')
-  x = _reduce_conv(x, 192, 3, padding='valid')
-  x = _context_conv(x, 192, 3, padding='valid')
-  x = _reduce_conv(x, 256, 3, padding='valid')
-  x = _context_conv(x, 256, 3, padding='valid')
+  xs25 = Reshape([640, 25])(x)  # 640Hz
+  xs25 = _reduce_conv(xs25, 32, 3)
+  xs25 = _context_conv(xs25, 32, 3)
+  xs25 = _reduce_conv(xs25, 48, 3)
+  xs25 = _context_conv(xs25, 48, 3)
+  xs25 = _reduce_conv(xs25, 64, 3)
+  xs25 = _context_conv(xs25, 64, 3)
+  xs25 = _reduce_conv(xs25, 96, 3)
+  xs25 = _context_conv(xs25, 96, 3)
+  xs25 = Dropout(0.2)(xs25)
+  xs25 = _context_conv(xs25, 64, 33)
 
-  x = Dropout(0.3)(x)
-  x = Conv1D(num_classes, 6, activation='softmax')(x)
+  xs32 = Reshape([500, 32])(x)  # 500Hz
+  xs32 = _reduce_conv(xs32, 32, 3)
+  xs32 = _context_conv(xs32, 32, 3)
+  xs32 = _reduce_conv(xs32, 48, 3)
+  xs32 = _context_conv(xs32, 48, 3)
+  xs32 = _reduce_conv(xs32, 64, 3)
+  xs32 = _context_conv(xs32, 64, 3)
+  xs32 = _reduce_conv(xs32, 96, 3)
+  xs32 = _context_conv(xs32, 96, 3)
+  xs32 = Dropout(0.2)(xs32)
+  xs32 = _context_conv(xs32, 64, 24)
+
+  xs40 = Reshape([400, 40])(x)  # 400Hz
+  xs40 = _reduce_conv(xs40, 48, 3)
+  xs40 = _context_conv(xs40, 48, 3)
+  xs40 = _reduce_conv(xs40, 64, 3)
+  xs40 = _context_conv(xs40, 64, 3)
+  xs40 = _reduce_conv(xs40, 96, 3)
+  xs40 = _context_conv(xs40, 96, 3)
+  xs40 = _reduce_conv(xs40, 128, 3)
+  xs40 = _context_conv(xs40, 128, 3)
+  xs40 = Dropout(0.2)(xs40)
+  xs40 = _context_conv(xs40, 64, 18)
+
+  x = Concatenate(axis=-1)([xs25, xs32, xs40])
+  x = Dropout(0.1)(x)
+  x = Conv1D(num_classes, 1, activation='softmax')(x)
   x = Reshape([-1])(x)
 
   model = Model(input_layer, x, name='conv_1d_multi_time_sliced')
