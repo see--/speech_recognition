@@ -764,7 +764,7 @@ def conv_1d_multi_time_sliced_model(input_size=16000, num_classes=11):
 
   model = Model(input_layer, x, name='conv_1d_multi_time_sliced')
   model.compile(
-      optimizer=keras.optimizers.Adam(lr=1e-3),
+      optimizer=keras.optimizers.Adam(lr=2e-3),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
