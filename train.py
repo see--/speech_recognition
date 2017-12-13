@@ -81,18 +81,18 @@ if __name__ == '__main__':
   # embed()
   model.fit_generator(
       train_gen, ap.set_size('training') // batch_size,
-      epochs=100, verbose=1, callbacks=[
+      epochs=200, verbose=1, callbacks=[
           ConfusionMatrixCallback(
               val_gen,
               ap.set_size('validation') // batch_size,
               wanted_words=prepare_words_list(get_classes(wanted_only=True)),
               all_words=prepare_words_list(classes),
               label2int=ap.word_to_index),
-          TensorBoard(log_dir='logs_052'),
+          TensorBoard(log_dir='logs_053'),
           ModelCheckpoint(
-              'checkpoints_052/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5'),
+              'checkpoints_053/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5'),
           ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
-                            factor=0.5, patience=3, verbose=1)])
+                            factor=0.5, patience=4, verbose=1)])
 
   eval_res = model.evaluate_generator(
       val_gen, ap.set_size('validation') // batch_size)
