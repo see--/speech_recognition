@@ -499,6 +499,12 @@ def conv_1d_gru_model(input_size=16000, num_classes=11):
         use_bias=False)
     return x
 
+  def _residual_block(x, num_filters, k):
+    residual = _context_conv(x, num_filters, k, padding='same')
+    residual = _context_conv(residual, num_filters, k, padding='same')
+    x = Add()([x, residual])
+    return x
+
   def _residual_reduce_block(x, num_filters, k_reduce, k_context):
     residual = _reduce_conv(x, num_filters, k_reduce, padding='same')
     residual = _context_conv(residual, num_filters, k_context, padding='same')
@@ -510,15 +516,20 @@ def conv_1d_gru_model(input_size=16000, num_classes=11):
   x = input_layer
   x = PreprocessRaw(x)
   x = Reshape([4000, 4])(x)
-  x = _residual_reduce_block(x, 16, 5, 3)  # 2000
+  x = _reduce_conv(x, 8, 5)  # 2000
+  x = _context_conv(x, 16, 3)
   x = _residual_reduce_block(x, 32, 5, 3)  # 1000
   x = _residual_reduce_block(x, 64, 5, 3)  # 500
-  x = _residual_reduce_block(x, 128, 5, 3)  # 250
-  x = _residual_reduce_block(x, 256, 5, 3)  # 125
-  x = _residual_reduce_block(x, 380, 5, 3)  # 64
-  x = _residual_reduce_block(x, 446, 5, 3)  # 30
+  x = _residual_reduce_block(x, 128, 3, 3)  # 250
+  x = _residual_block(x, 128, 3)  # 125
+  x = _residual_reduce_block(x, 160, 3, 3)  # 125
+  x = _residual_block(x, 160, 3)  # 125
+  x = _residual_reduce_block(x, 224, 3, 3)  # 64
+  x = _residual_block(x, 224, 3)  # 64
+  x = _residual_reduce_block(x, 256, 3, 3)  # 30
+  x = _residual_block(x, 256, 3)  # 30
 
-  x = Bidirectional(GRU(223, dropout=0.3, recurrent_dropout=0.3))(x)
+  x = Bidirectional(GRU(128, dropout=0.3, recurrent_dropout=0.3))(x)
   x = Dense(num_classes, activation='softmax')(x)
 
   model = Model(input_layer, x, name='conv_1d_bigru')
