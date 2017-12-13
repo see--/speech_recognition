@@ -690,26 +690,20 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
     x = Add()([x, residual])
     return x
 
-  x = Reshape([8000, 2])(x)  # 8000 Hz
-  x = _context_conv(x, 16, 5)
-  x = _reduce_conv(x, 32, 3)  # 4000
-  x = _context_conv(x, 32, 5)
-  x = _reduce_conv(x, 48, 3)  # 2000
-  x = _context_conv(x, 48, 5)
-  x = _reduce_conv(x, 64, 3)  # 1000
-  x = _residual_block(x, 64, 5)
-  x = _reduce_conv(x, 96, 3)  # 500
-  x = _residual_block(x, 96, 5)
-  x = _reduce_conv(x, 128, 3)  # 250
-  x = _residual_block(x, 128, 5)
-  x = _reduce_conv(x, 160, 3)  # 125
-  x = _residual_block(x, 160, 5)
-  x = _reduce_conv(x, 192, 3)  # 64
-  x = _residual_block(x, 192, 5)
-  x = _reduce_conv(x, 224, 3)  # 32
-  x = _residual_block(x, 224, 5)
+  x = Reshape([50, 320])(x)
+  x = Lambda(lambda x: K.permute_dimensions(x, pattern=(0, 2, 1)))(x)
+  x = _context_conv(x, 64, 5)
+  x = _reduce_conv(x, 128, 3)  # 160
+  x = _context_conv(x, 128, 5)
+  x = _reduce_conv(x, 256, 3)  # 80
+  x = _context_conv(x, 256, 3)
+  x = _reduce_conv(x, 380, 3)  # 40
+  x = _context_conv(x, 380, 3)
+  x = _reduce_conv(x, 512, 3)  # 20
+  x = _context_conv(x, 512, 3)
+  x = GlobalAveragePooling1D()(x)
   x = Dropout(0.3)(x)
-  x = Conv1D(num_classes, 30, activation='softmax')(x)
+  x = Dense(num_classes, activation='softmax')(x)
   x = Reshape([-1])(x)
 
   model = Model(input_layer, x, name='conv_1d_time_sliced')
