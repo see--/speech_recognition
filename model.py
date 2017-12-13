@@ -502,7 +502,7 @@ def conv_1d_gru_model(input_size=16000, num_classes=11):
   def _residual_reduce_block(x, num_filters, k_reduce, k_context):
     residual = _reduce_conv(x, num_filters, k_reduce, padding='same')
     residual = _context_conv(residual, num_filters, k_context, padding='same')
-    x = _reduce_conv(x, num_filters, 1)
+    x = Conv1D(num_filters, 1, use_bias=False, strides=2)(x)
     x = Add()([x, residual])
     return x
 
