@@ -487,11 +487,6 @@ def conv_1d_gru_model(input_size=16000, num_classes=11):
   Returns:
     Compiled keras model
   """
-  input_layer = Input(shape=[input_size])
-  x = input_layer
-  x = PreprocessRaw(x)
-  x = Reshape([4000, 4])(x)
-
   def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
     x = _depthwise_conv_block(
         x, num_filters, k, padding=padding, use_bias=False,
@@ -504,31 +499,26 @@ def conv_1d_gru_model(input_size=16000, num_classes=11):
         use_bias=False)
     return x
 
-  def _residual_block(x, num_filters, k):
-    residual = _context_conv(x, num_filters, k, padding='same')
-    residual = _context_conv(residual, num_filters, k, padding='same')
+  def _residual_reduce_block(x, num_filters, k_reduce, k_context):
+    residual = _reduce_conv(x, num_filters, k_reduce, padding='same')
+    residual = _context_conv(residual, num_filters, k_context, padding='same')
+    x = _reduce_conv(x, num_filters, 1)
     x = Add()([x, residual])
     return x
 
-  x = _reduce_conv(x, 8, 7)  # 2000
-  x = _context_conv(x, 16, 5)
-  x = _reduce_conv(x, 32, 5)  # 1000
-  x = _context_conv(x, 32, 3)
-  x = _reduce_conv(x, 64, 5)  # 1000
-  x = _context_conv(x, 64, 3)
-  x = _reduce_conv(x, 96, 5)  # 500
-  x = _context_conv(x, 96, 3)
-  x = _reduce_conv(x, 128, 5)  # 250
-  x = _context_conv(x, 128, 3)
-  x = _reduce_conv(x, 256, 5)  # 125
-  x = _context_conv(x, 256, 3)
-  x = _reduce_conv(x, 380, 5)  # 62
-  x = _context_conv(x, 380, 3)
-  x = _reduce_conv(x, 446, 3)  # 30
-  x = _context_conv(x, 446, 3)
+  input_layer = Input(shape=[input_size])
+  x = input_layer
+  x = PreprocessRaw(x)
+  x = Reshape([4000, 4])(x)
+  x = _residual_reduce_block(x, 16, 5, 3)  # 2000
+  x = _residual_reduce_block(x, 32, 5, 3)  # 1000
+  x = _residual_reduce_block(x, 64, 5, 3)  # 500
+  x = _residual_reduce_block(x, 128, 5, 3)  # 250
+  x = _residual_reduce_block(x, 256, 5, 3)  # 125
+  x = _residual_reduce_block(x, 380, 5, 3)  # 64
+  x = _residual_reduce_block(x, 446, 5, 3)  # 30
 
-  x = Bidirectional(GRU(223, dropout=0.1, recurrent_dropout=0.1))(x)
-  # x = Reshape([-1])(x)
+  x = Bidirectional(GRU(223, dropout=0.3, recurrent_dropout=0.3))(x)
   x = Dense(num_classes, activation='softmax')(x)
 
   model = Model(input_layer, x, name='conv_1d_bigru')
