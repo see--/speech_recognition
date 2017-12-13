@@ -37,12 +37,13 @@ def relu6(x):
 
 def _depthwise_conv_block(
         x, num_filter, k, padding='same', use_bias=True,
-        dilation_rate=1, intermediate_activation=False):
+        dilation_rate=1, intermediate_activation=False,
+        strides=1):
   # TODO(fchollet): Implement DepthwiseConv1D
   x = Lambda(lambda x: K.expand_dims(x, 1))(x)
   x = DepthwiseConv2D(
       (1, k), padding=padding, use_bias=use_bias,
-      dilation_rate=dilation_rate)(x)
+      dilation_rate=dilation_rate, strides=strides)(x)
   x = Lambda(lambda x: K.squeeze(x, 1))(x)
   if intermediate_activation:
     x = BatchNormalization()(x)
@@ -488,39 +489,45 @@ def conv_1d_gru_model(input_size=16000, num_classes=11):
   """
   input_layer = Input(shape=[input_size])
   x = input_layer
-  x = Reshape([400, 40])(x)
   x = PreprocessRaw(x)
+  x = Reshape([4000, 4])(x)
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
-    x = Conv1D(num_filters, k, padding=padding,
-               kernel_regularizer=l2(0.00001))(x)
-    x = BatchNormalization()(x)
-    x = Activation(relu6)(x)
-    x = MaxPool1D(pool_size=3, strides=strides, padding=padding)(x)
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding=padding, use_bias=False,
+        strides=strides)
     return x
 
   def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
-    x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
-               kernel_regularizer=l2(0.00001))(x)
-    x = BatchNormalization()(x)
-    x = Activation(relu6)(x)
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding=padding, dilation_rate=dilation_rate,
+        use_bias=False)
     return x
 
-  x = _context_conv(x, 32, 1)
-  x = _reduce_conv(x, 64, 3)
-  x = _context_conv(x, 64, 3)
-  x = _context_conv(x, 64, 3)
-  x = _reduce_conv(x, 128, 3)
-  x = _context_conv(x, 128, 3)
-  x = _context_conv(x, 128, 3)
-  x = _reduce_conv(x, 256, 3)
-  x = _context_conv(x, 256, 3)
-  x = _context_conv(x, 256, 3)
-  x = _reduce_conv(x, 384, 3)
-  x = _context_conv(x, 384, 3)
-  x = _context_conv(x, 384, 3)  # (12, 384)
+  def _residual_block(x, num_filters, k):
+    residual = _context_conv(x, num_filters, k, padding='same')
+    residual = _context_conv(residual, num_filters, k, padding='same')
+    x = Add()([x, residual])
+    return x
 
-  x = Bidirectional(GRU(192, dropout=0.1, recurrent_dropout=0.1))(x)
+  x = _reduce_conv(x, 8, 7)  # 2000
+  x = _context_conv(x, 16, 5)
+  x = _reduce_conv(x, 32, 5)  # 1000
+  x = _context_conv(x, 32, 3)
+  x = _reduce_conv(x, 64, 5)  # 1000
+  x = _context_conv(x, 64, 3)
+  x = _reduce_conv(x, 96, 5)  # 500
+  x = _context_conv(x, 96, 3)
+  x = _reduce_conv(x, 128, 5)  # 250
+  x = _context_conv(x, 128, 3)
+  x = _reduce_conv(x, 256, 5)  # 125
+  x = _context_conv(x, 256, 3)
+  x = _reduce_conv(x, 380, 5)  # 62
+  x = _context_conv(x, 380, 3)
+  x = _reduce_conv(x, 512, 3)  # 30
+  x = _context_conv(x, 512, 3)
+
+  x = Bidirectional(GRU(256, dropout=0.1, recurrent_dropout=0.1))(x)
   # x = Reshape([-1])(x)
   x = Dense(num_classes, activation='softmax')(x)
 
