@@ -696,15 +696,16 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
 
 def _depthwise_conv_block(
         x, num_filter, k, padding='same', use_bias=True,
-        dilation_rate=1):
+        dilation_rate=1, intermediate_activation=False):
   # TODO(@fchollet): Implement DepthwiseConv1D
   x = Lambda(lambda x: K.expand_dims(x, 1))(x)
   x = DepthwiseConv2D(
       (1, k), padding=padding, use_bias=use_bias,
       dilation_rate=dilation_rate)(x)
   x = Lambda(lambda x: K.squeeze(x, 1))(x)
-  x = BatchNormalization()(x)
-  x = Activation(relu6)(x)
+  if intermediate_activation:
+    x = BatchNormalization()(x)
+    x = Activation(relu6)(x)
   x = Conv1D(num_filter, 1, use_bias=use_bias)(x)
   x = BatchNormalization()(x)
   x = Activation(relu6)(x)
@@ -784,7 +785,7 @@ def conv_1d_multi_time_sliced_model(input_size=16000, num_classes=11):
   model = Model(input_layer, x, name='conv_1d_multi_time_sliced')
 
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=1e-3),
+      optimizer=keras.optimizers.RMSprop(lr=3e-3),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
