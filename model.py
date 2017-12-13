@@ -1,7 +1,7 @@
 import keras
 from keras import backend as K
 from keras.layers import Dense, Input, Lambda, Conv1D, AveragePooling1D
-from keras.layers import Reshape, Flatten
+from keras.layers import Reshape, Flatten, Add
 from keras.layers import Conv2D, MaxPool2D, MaxPool1D
 from keras.layers import BatchNormalization, Activation
 from keras.layers import GlobalAveragePooling2D, MaxPool1D
@@ -33,6 +33,24 @@ PreprocessRaw = Lambda(preprocess_raw)
 
 def relu6(x):
   return K.relu(x, max_value=6)
+
+
+def _depthwise_conv_block(
+        x, num_filter, k, padding='same', use_bias=True,
+        dilation_rate=1, intermediate_activation=False):
+  # TODO(fchollet): Implement DepthwiseConv1D
+  x = Lambda(lambda x: K.expand_dims(x, 1))(x)
+  x = DepthwiseConv2D(
+      (1, k), padding=padding, use_bias=use_bias,
+      dilation_rate=dilation_rate)(x)
+  x = Lambda(lambda x: K.squeeze(x, 1))(x)
+  if intermediate_activation:
+    x = BatchNormalization()(x)
+    x = Activation(relu6)(x)
+  x = Conv1D(num_filter, 1, use_bias=use_bias)(x)
+  x = BatchNormalization()(x)
+  x = Activation(relu6)(x)
+  return x
 
 
 def time_slice_stack(x, step):
@@ -652,64 +670,48 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
   """
   input_layer = Input(shape=[input_size])
   x = input_layer
-  x = Lambda(lambda x: time_slice_stack(x, 40))(x)
   x = PreprocessRaw(x)
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
-    x = Conv1D(num_filters, k, padding=padding, use_bias=False,
-               kernel_regularizer=l2(0.00001))(x)
-    x = BatchNormalization()(x)
-    x = Activation(relu6)(x)
-    x = MaxPool1D(pool_size=3, strides=strides, padding=padding)(x)
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding=padding, use_bias=False)
+    x = MaxPool1D(pool_size=3, strides=strides, padding='same')(x)
     return x
 
   def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
-    x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
-               kernel_regularizer=l2(0.00001), use_bias=False)(x)
-    x = BatchNormalization()(x)
-    x = Activation(relu6)(x)
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding=padding, dilation_rate=dilation_rate,
+        use_bias=False)
     return x
 
-  x = _context_conv(x, 32, 3)
-  x = _reduce_conv(x, 48, 3)
-  x = _context_conv(x, 48, 3)
-  x = _reduce_conv(x, 96, 3)
-  x = _context_conv(x, 96, 3)
-  x = _reduce_conv(x, 128, 3)
-  x = _context_conv(x, 128, 3)
-  x = _reduce_conv(x, 160, 3)
-  x = _context_conv(x, 160, 3)
-  x = _reduce_conv(x, 192, 3)
-  x = _context_conv(x, 192, 3)
+  def _residual_block(x, num_filters, k):
+    residual = _context_conv(x, num_filters, k, padding='same')
+    residual = _context_conv(residual, num_filters, k, padding='same')
+    x = Add()([x, residual])
+    return x
 
+  x = Reshape([50, 320])(x)
+  x = Lambda(lambda x: K.permute_dimensions(x, pattern=(0, 2, 1)))(x)
+  x = _context_conv(x, 64, 5)
+  x = _reduce_conv(x, 128, 3)  # 160
+  x = _context_conv(x, 128, 5)
+  x = _reduce_conv(x, 256, 3)  # 80
+  x = _context_conv(x, 256, 3)
+  x = _reduce_conv(x, 380, 3)  # 40
+  x = _context_conv(x, 380, 3)
+  x = _reduce_conv(x, 512, 3)  # 20
+  x = _context_conv(x, 512, 3)
+  x = GlobalAveragePooling1D()(x)
   x = Dropout(0.3)(x)
-  x = Conv1D(num_classes, 5, activation='softmax')(x)
+  x = Dense(num_classes, activation='softmax')(x)
   x = Reshape([-1])(x)
 
   model = Model(input_layer, x, name='conv_1d_time_sliced')
   model.compile(
-      optimizer=keras.optimizers.Adam(lr=3e-4),
+      optimizer=keras.optimizers.Adam(lr=1e-3),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
-
-
-def _depthwise_conv_block(
-        x, num_filter, k, padding='same', use_bias=True,
-        dilation_rate=1, intermediate_activation=False):
-  # TODO(@fchollet): Implement DepthwiseConv1D
-  x = Lambda(lambda x: K.expand_dims(x, 1))(x)
-  x = DepthwiseConv2D(
-      (1, k), padding=padding, use_bias=use_bias,
-      dilation_rate=dilation_rate)(x)
-  x = Lambda(lambda x: K.squeeze(x, 1))(x)
-  if intermediate_activation:
-    x = BatchNormalization()(x)
-    x = Activation(relu6)(x)
-  x = Conv1D(num_filter, 1, use_bias=use_bias)(x)
-  x = BatchNormalization()(x)
-  x = Activation(relu6)(x)
-  return x
 
 
 def conv_1d_multi_time_sliced_model(input_size=16000, num_classes=11):
