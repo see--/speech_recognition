@@ -78,7 +78,7 @@ if __name__ == '__main__':
       'conv_1d_multi_time_sliced',
       model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
       num_classes=model_settings['label_count'])
-  # embed()
+  embed()
   model.fit_generator(
       train_gen, ap.set_size('training') // batch_size,
       epochs=200, verbose=1, callbacks=[
@@ -88,9 +88,9 @@ if __name__ == '__main__':
               wanted_words=prepare_words_list(get_classes(wanted_only=True)),
               all_words=prepare_words_list(classes),
               label2int=ap.word_to_index),
-          TensorBoard(log_dir='logs_053'),
+          TensorBoard(log_dir='logs_054'),
           ModelCheckpoint(
-              'checkpoints_053/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5'),
+              'checkpoints_054/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5'),
           ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                             factor=0.5, patience=4, verbose=1)])
 

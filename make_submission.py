@@ -67,7 +67,7 @@ if __name__ == '__main__':
       spectrogram,
       wav_decoder.sample_rate,
       dct_coefficient_count=model_settings['dct_coefficient_count'])
-  model = load_model('checkpoints_051/ep-064-vl-0.2199.hdf5',
+  model = load_model('checkpoints_052/ep-046-vl-0.2188.hdf5',
                      custom_objects={'relu6': relu6,
                                      'time_slice_stack': time_slice_stack})
   # embed()
@@ -125,15 +125,15 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_051.csv', index=False, compression=None)
+      'submission_052.csv', index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_051_all_labels.csv', index=False, compression=None)
+      'submission_052_all_labels.csv', index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
   all_data = pd.DataFrame({'fname': fns, 'label': labels})
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_051_all_labels_probs.csv', index=False, compression=None)
+      'submission_052_all_labels_probs.csv', index=False, compression=None)
   print("Done!")
