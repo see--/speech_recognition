@@ -524,16 +524,16 @@ def conv_1d_gru_model(input_size=16000, num_classes=11):
   x = _context_conv(x, 256, 3)
   x = _reduce_conv(x, 380, 5)  # 62
   x = _context_conv(x, 380, 3)
-  x = _reduce_conv(x, 512, 3)  # 30
-  x = _context_conv(x, 512, 3)
+  x = _reduce_conv(x, 446, 3)  # 30
+  x = _context_conv(x, 446, 3)
 
-  x = Bidirectional(GRU(256, dropout=0.1, recurrent_dropout=0.1))(x)
+  x = Bidirectional(GRU(223, dropout=0.1, recurrent_dropout=0.1))(x)
   # x = Reshape([-1])(x)
   x = Dense(num_classes, activation='softmax')(x)
 
   model = Model(input_layer, x, name='conv_1d_bigru')
   model.compile(
-      optimizer=keras.optimizers.Adam(),
+      optimizer=keras.optimizers.RMSprop(lr=1e-3),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
