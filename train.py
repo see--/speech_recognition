@@ -64,36 +64,31 @@ if __name__ == '__main__':
       clip_duration_ms=1000, window_size_ms=30.0, window_stride_ms=10.0,
       dct_coefficient_count=40)
   ap = AudioProcessor(
-      data_dirs=data_dirs,
-      silence_percentage=15.0,
-      unknown_percentage=3.0,
-      wanted_words=classes,
-      validation_percentage=10.0,
-      testing_percentage=0.0,
-      model_settings=model_settings,
-      compute_mfcc=compute_mfcc)
+      data_dirs=data_dirs, wanted_words=classes,
+      silence_percentage=15.0, unknown_percentage=3.0,
+      validation_percentage=10.0, testing_percentage=0.0,
+      model_settings=model_settings, compute_mfcc=compute_mfcc)
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training')
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation')
   model = speech_model(
-      'conv_1d_time_sliced',
+      'conv_1d_time_sliced_group',
       model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
       num_classes=model_settings['label_count'])
-  embed()
+  # embed()
+  callbacks = [
+      ConfusionMatrixCallback(
+          val_gen, ap.set_size('validation') // batch_size,
+          wanted_words=prepare_words_list(get_classes(wanted_only=True)),
+          all_words=prepare_words_list(classes),
+          label2int=ap.word_to_index),
+      TensorBoard(log_dir='logs_064'),
+      ModelCheckpoint('checkpoints_064/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5'),
+      ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
+                        factor=0.5, patience=4, verbose=1)]
   model.fit_generator(
-      train_gen, ap.set_size('training') // batch_size,
-      epochs=200, verbose=1, callbacks=[
-          ConfusionMatrixCallback(
-              val_gen,
-              ap.set_size('validation') // batch_size,
-              wanted_words=prepare_words_list(get_classes(wanted_only=True)),
-              all_words=prepare_words_list(classes),
-              label2int=ap.word_to_index),
-          TensorBoard(log_dir='logs_063'),
-          ModelCheckpoint(
-              'checkpoints_063/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5'),
-          ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
-                            factor=0.5, patience=4, verbose=1)])
+      train_gen, steps_per_epoch=ap.set_size('training') // batch_size,
+      epochs=200, verbose=1, callbacks=callbacks)
 
   eval_res = model.evaluate_generator(
-      val_gen, ap.set_size('validation') // batch_size)
+      val_gen, steps_per_epoch=ap.set_size('validation') // batch_size)
   print(eval_res)

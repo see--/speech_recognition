@@ -665,8 +665,7 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
     x = _depthwise_conv_block(
-        x, num_filters, k, padding=padding, use_bias=False)
-    x = MaxPool1D(pool_size=3, strides=strides, padding='same')(x)
+        x, num_filters, k, padding=padding, use_bias=False, strides=strides)
     return x
 
   def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
@@ -675,21 +674,15 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
         use_bias=False)
     return x
 
-  def _residual_block(x, num_filters, k):
-    residual = _context_conv(x, num_filters, k, padding='same')
-    residual = _context_conv(residual, num_filters, k, padding='same')
-    x = Add()([x, residual])
-    return x
-
   x = Reshape([400, 40])(x)
   x = _context_conv(x, 64, 5)
-  x = _reduce_conv(x, 128, 3)  # 160
+  x = _reduce_conv(x, 128, 3)  # 200
   x = _context_conv(x, 128, 5)
-  x = _reduce_conv(x, 256, 3)  # 80
+  x = _reduce_conv(x, 256, 3)  # 100
   x = _context_conv(x, 256, 3)
-  x = _reduce_conv(x, 380, 3)  # 40
+  x = _reduce_conv(x, 380, 3)  # 50
   x = _context_conv(x, 380, 3)
-  x = _reduce_conv(x, 512, 3)  # 20
+  x = _reduce_conv(x, 512, 3)  # 25
   x = _context_conv(x, 512, 3)
   x = GlobalAveragePooling1D()(x)
   x = Dropout(0.3)(x)
@@ -697,6 +690,86 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
   x = Reshape([-1])(x)
 
   model = Model(input_layer, x, name='conv_1d_time_sliced')
+  model.compile(
+      optimizer=keras.optimizers.RMSprop(lr=1e-3),
+      loss=keras.losses.categorical_crossentropy,
+      metrics=[keras.metrics.categorical_accuracy])
+  return model
+
+
+def conv_1d_time_sliced_group_model(input_size=16000, num_classes=11):
+  """ Creates a 1D model for temporal data. Note: Use only
+  with compute_mfcc = False (e.g. raw waveform data).
+  Args:
+    input_size: How big the input vector is.
+    num_classes: How many classes are to be recognized.
+  Returns:
+    Compiled keras model
+  """
+  input_layer = Input(shape=[input_size])
+  x = input_layer
+  x = PreprocessRaw(x)
+
+  def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding=padding, dilation_rate=dilation_rate,
+        use_bias=False)
+    return x
+
+  def _grouped_reduce_conv(x, num_filters, k, g, num_channels,
+                           strides=2, padding='valid'):
+    groups = []
+    assert num_channels % g == 0
+    assert num_filters % g == 0
+    group_size = int(num_channels / g)
+    num_filters_per_group = int(num_filters / g)
+    for i in range(g):
+      group_start = i * group_size
+      group_end = (i + 1) * group_size
+      group = Lambda(lambda x: x[:, :, group_start: group_end])(x)
+      group = _depthwise_conv_block(
+          group, num_filters_per_group, k, padding=padding, use_bias=False,
+          strides=strides)
+      groups.append(group)
+    if g == 1:
+      return groups[0]
+    return Concatenate()(groups)
+
+  def _grouped_context_conv(x, num_filters, k, g, num_channels,
+                            dilation_rate=1, padding='valid'):
+    groups = []
+    assert num_channels % g == 0
+    assert num_filters % g == 0
+    group_size = int(num_channels / g)
+    num_filters_per_group = int(num_filters / g)
+    for i in range(g):
+      group_start = i * group_size
+      group_end = (i + 1) * group_size
+      group = Lambda(lambda x: x[:, :, group_start: group_end])(x)
+      group = _depthwise_conv_block(
+          x, num_filters_per_group, k, use_bias=False,
+          padding=padding, dilation_rate=dilation_rate)
+      groups.append(group)
+    if g == 1:
+      return groups[0]
+    return Concatenate()(groups)
+
+  x = Reshape([400, 40])(x)
+  x = _grouped_context_conv(x, 64, 5, 2, 40)
+  x = _grouped_reduce_conv(x, 128, 3, 4, 64)  # 200
+  x = _grouped_context_conv(x, 128, 5, 2, 128)
+  x = _grouped_reduce_conv(x, 256, 3, 4, 128)  # 100
+  x = _grouped_context_conv(x, 256, 3, 2, 256)
+  x = _grouped_reduce_conv(x, 380, 3, 4, 256)  # 50
+  x = _grouped_context_conv(x, 380, 3, 2, 380)
+  x = _grouped_reduce_conv(x, 512, 3, 4, 380)  # 25
+  x = _grouped_context_conv(x, 512, 3, 2, 512)
+  x = GlobalAveragePooling1D()(x)
+  x = Dropout(0.3)(x)
+  x = Dense(num_classes, activation='softmax')(x)
+  x = Reshape([-1])(x)
+
+  model = Model(input_layer, x, name='conv_1d_time_sliced_group')
   model.compile(
       optimizer=keras.optimizers.RMSprop(lr=1e-3),
       loss=keras.losses.categorical_crossentropy,
@@ -794,6 +867,8 @@ def speech_model(model_type, input_size, num_classes=11):
     return conv_1d_multi_time_sliced_model(input_size, num_classes)
   elif model_type == 'conv_1d_time_sliced':
     return conv_1d_time_sliced_model(input_size, num_classes)
+  elif model_type == 'conv_1d_time_sliced_group':
+    return conv_1d_time_sliced_group_model(input_size, num_classes)
   elif model_type == 'conv_1d_heavy':
     return conv_1d_heavy_model(input_size, num_classes)
   elif model_type == 'conv_1d_simple':
