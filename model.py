@@ -504,12 +504,12 @@ def conv_1d_gru_model(input_size=16000, num_classes=11):
   x = PreprocessRaw(x)
   x = Reshape([-1, 1])(x)
   x = _reduce_conv(x, 128, 127, strides=16)  # 1000
-  x = _reduce_conv(x, 256, 63, strides=4)  # 250
-  x = _reduce_conv(x, 320, 31, strides=3)  # 64
-  x = _reduce_conv(x, 384, 15, strides=2)  # 32
-  x = _reduce_conv(x, 448, 7, strides=2)  # 16
-  x = _reduce_conv(x, 512, 5, strides=2)  # 8
-  x = _context_conv(x, 576, 4)  # 8
+  x = _reduce_conv(x, 256, 31, strides=4)  # 250
+  x = _reduce_conv(x, 320, 3, strides=2)  # 64
+  x = _reduce_conv(x, 384, 3, strides=2)  # 32
+  x = _reduce_conv(x, 448, 3, strides=2)  # 16
+  x = _reduce_conv(x, 512, 3, strides=2)  # 8
+  x = _context_conv(x, 576, 14)  # 8
   x = Flatten()(x)
   x = Dropout(0.3)(x)
   x = Activation(relu6)(Dense(256)(x))
