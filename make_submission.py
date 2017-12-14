@@ -8,7 +8,8 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from keras.models import load_model
-from model import prepare_model_settings, relu6, time_slice_stack
+from model import prepare_model_settings, relu6
+from keras.applications.mobilenet import DepthwiseConv2D
 from input_data import prepare_words_list
 from classes import get_classes, get_int2label
 from IPython import embed  # noqa
@@ -67,9 +68,9 @@ if __name__ == '__main__':
       spectrogram,
       wav_decoder.sample_rate,
       dct_coefficient_count=model_settings['dct_coefficient_count'])
-  model = load_model('checkpoints_052/ep-046-vl-0.2188.hdf5',
+  model = load_model('checkpoints_059/ep-059-vl-0.2212.hdf5',
                      custom_objects={'relu6': relu6,
-                                     'time_slice_stack': time_slice_stack})
+                                     'DepthwiseConv2D': DepthwiseConv2D})
   # embed()
 
   # In wanted_labels we map the not wanted words to `unknown`. Though we
@@ -125,15 +126,15 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_052.csv', index=False, compression=None)
+      'submission_059.csv', index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_052_all_labels.csv', index=False, compression=None)
+      'submission_059_all_labels.csv', index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
   all_data = pd.DataFrame({'fname': fns, 'label': labels})
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_052_all_labels_probs.csv', index=False, compression=None)
+      'submission_059_all_labels_probs.csv', index=False, compression=None)
   print("Done!")
