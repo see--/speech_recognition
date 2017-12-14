@@ -36,7 +36,7 @@ def relu6(x):
 
 
 def _depthwise_conv_block(
-        x, num_filter, k, padding='same', use_bias=True,
+        x, num_filter, k, padding='same', use_bias=False,
         dilation_rate=1, intermediate_activation=False,
         strides=1):
   # TODO(fchollet): Implement DepthwiseConv1D
@@ -499,37 +499,18 @@ def conv_1d_gru_model(input_size=16000, num_classes=11):
         use_bias=False)
     return x
 
-  def _residual_block(x, num_filters, k):
-    residual = _context_conv(x, num_filters, k, padding='same')
-    residual = _context_conv(residual, num_filters, k, padding='same')
-    x = Add()([x, residual])
-    return x
-
-  def _residual_reduce_block(x, num_filters, k_reduce, k_context):
-    residual = _reduce_conv(x, num_filters, k_reduce, padding='same')
-    residual = _context_conv(residual, num_filters, k_context, padding='same')
-    x = Conv1D(num_filters, 1, use_bias=False, strides=2)(x)
-    x = Add()([x, residual])
-    return x
-
   input_layer = Input(shape=[input_size])
   x = input_layer
   x = PreprocessRaw(x)
-  x = Reshape([4000, 4])(x)
-  x = _reduce_conv(x, 8, 5)  # 2000
-  x = _context_conv(x, 16, 3)
-  x = _residual_reduce_block(x, 32, 5, 3)  # 1000
-  x = _residual_reduce_block(x, 64, 5, 3)  # 500
-  x = _residual_reduce_block(x, 128, 3, 3)  # 250
-  x = _residual_block(x, 128, 3)  # 125
-  x = _residual_reduce_block(x, 160, 3, 3)  # 125
-  x = _residual_block(x, 160, 3)  # 125
-  x = _residual_reduce_block(x, 224, 3, 3)  # 64
-  x = _residual_block(x, 224, 3)  # 64
-  x = _residual_reduce_block(x, 256, 3, 3)  # 30
-  x = _residual_block(x, 256, 3)  # 30
+  x = Reshape([-1, 1])(x)
+  x = _reduce_conv(x, 16, 63, strides=8)  # 2000
+  x = _reduce_conv(x, 32, 31, strides=4)  # 500
+  x = _reduce_conv(x, 64, 15, strides=2)  # 250
+  x = _reduce_conv(x, 128, 7, strides=2)  # 125
+  x = _reduce_conv(x, 256, 5, strides=2)  # 64
+  x = _reduce_conv(x, 384, 3, strides=2)  # 28
 
-  x = Bidirectional(GRU(128, dropout=0.3, recurrent_dropout=0.3))(x)
+  x = Bidirectional(GRU(192, dropout=0.3, recurrent_dropout=0.3))(x)
   x = Dense(num_classes, activation='softmax')(x)
 
   model = Model(input_layer, x, name='conv_1d_bigru')
