@@ -752,24 +752,34 @@ def conv_1d_time_sliced_group_model(input_size=16000, num_classes=11):
 
   x500 = Reshape([500, 32])(x)
   x500 = _grouped_reduce_conv(x500, 64, 3, 4, 32)  # 250
-  x500 = _grouped_reduce_conv(x500, 128, 3, 2, 64)  # 125
-  x500 = _grouped_reduce_conv(x500, 256, 3, 4, 128)  # 64
-  x500 = _grouped_reduce_conv(x500, 384, 3, 2, 256)  # 32
-  x500 = _grouped_reduce_conv(x500, 448, 3, 4, 384)  # 16
-  x500 = _grouped_reduce_conv(x500, 512, 3, 2, 448)  # 6
+  x500 = _grouped_context_conv(x500, 64, 3, 2, 64)
+  x500 = _grouped_reduce_conv(x500, 128, 3, 4, 64)  # 125
+  x500 = _grouped_context_conv(x500, 128, 3, 2, 128)
+  x500 = _grouped_reduce_conv(x500, 160, 3, 4, 128)  # 125
+  x500 = _grouped_context_conv(x500, 160, 3, 2, 160)
+  x500 = _grouped_reduce_conv(x500, 192, 3, 4, 160)  # 64
+  x500 = _grouped_context_conv(x500, 192, 3, 2, 192)
+  x500 = _grouped_reduce_conv(x500, 224, 3, 4, 192)  # 32
+  x500 = _grouped_context_conv(x500, 224, 3, 2, 224)
+  x500 = _grouped_context_conv(x500, 224, 3, 2, 224)
 
   x400 = Reshape([400, 40])(x)
-  x400 = _grouped_reduce_conv(x400, 64, 3, 4, 40)  # 200
-  x400 = _grouped_reduce_conv(x400, 128, 3, 2, 64)  # 100
-  x400 = _grouped_reduce_conv(x400, 256, 3, 4, 128)  # 50
-  x400 = _grouped_reduce_conv(x400, 384, 3, 2, 256)  # 25
-  x400 = _grouped_reduce_conv(x400, 448, 3, 4, 384)  # 12
-  x400 = _grouped_reduce_conv(x400, 512, 3, 2, 448)  # 5
-  x400 = ZeroPadding1D(padding=(1, 0))(x400)  # 6
+  x400 = _grouped_reduce_conv(x400, 64, 3, 4, 32)  # 250
+  x400 = _grouped_context_conv(x400, 64, 3, 2, 64)
+  x400 = _grouped_reduce_conv(x400, 128, 3, 4, 64)  # 125
+  x400 = _grouped_context_conv(x400, 128, 3, 2, 128)
+  x400 = _grouped_reduce_conv(x400, 160, 3, 4, 128)  # 125
+  x400 = _grouped_context_conv(x400, 160, 3, 2, 160)
+  x400 = _grouped_reduce_conv(x400, 192, 3, 4, 160)  # 64
+  x400 = _grouped_context_conv(x400, 192, 3, 2, 192)
+  x400 = _grouped_reduce_conv(x400, 224, 3, 4, 192)  # 32
+  x400 = _grouped_context_conv(x400, 224, 3, 2, 224)
+  x400 = ZeroPadding1D(padding=(1, 0))(x400)
 
   x = Concatenate()([x500, x400])
-  x = Flatten()(Conv1D(256, 6)(x))
-  x = Dropout(0.3)(x)
+  x = Dropout(0.15)(x)
+  x = Flatten()(Conv1D(128, 8)(x))
+  x = Dropout(0.05)(x)
   x = Dense(num_classes, activation='softmax')(x)
   x = Reshape([-1])(x)
 
