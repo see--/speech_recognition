@@ -710,15 +710,10 @@ def conv_1d_time_sliced_group_model(input_size=16000, num_classes=11):
   x = input_layer
   x = PreprocessRaw(x)
 
-  def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
-    x = _depthwise_conv_block(
-        x, num_filters, k, padding=padding, dilation_rate=dilation_rate,
-        use_bias=False)
-    return x
-
   def _grouped_reduce_conv(x, num_filters, k, g, num_channels,
                            strides=2, padding='valid'):
     groups = []
+    assert g >= 1
     assert num_channels % g == 0
     assert num_filters % g == 0
     group_size = int(num_channels / g)
@@ -738,6 +733,7 @@ def conv_1d_time_sliced_group_model(input_size=16000, num_classes=11):
   def _grouped_context_conv(x, num_filters, k, g, num_channels,
                             dilation_rate=1, padding='valid'):
     groups = []
+    assert g >= 1
     assert num_channels % g == 0
     assert num_filters % g == 0
     group_size = int(num_channels / g)
@@ -755,17 +751,20 @@ def conv_1d_time_sliced_group_model(input_size=16000, num_classes=11):
     return Concatenate()(groups)
 
   x = Reshape([400, 40])(x)
-  x = _grouped_context_conv(x, 64, 5, 2, 40)
+  x = _grouped_context_conv(x, 64, 3, 2, 40)
   x = _grouped_reduce_conv(x, 128, 3, 4, 64)  # 200
-  x = _grouped_context_conv(x, 128, 5, 2, 128)
+  x = _grouped_context_conv(x, 128, 3, 2, 128)
   x = _grouped_reduce_conv(x, 256, 3, 4, 128)  # 100
   x = _grouped_context_conv(x, 256, 3, 2, 256)
-  x = _grouped_reduce_conv(x, 380, 3, 4, 256)  # 50
-  x = _grouped_context_conv(x, 380, 3, 2, 380)
-  x = _grouped_reduce_conv(x, 512, 3, 4, 380)  # 25
+  x = _grouped_reduce_conv(x, 384, 3, 4, 256)  # 50
+  x = _grouped_context_conv(x, 384, 3, 2, 380)
+  x = _grouped_reduce_conv(x, 448, 3, 4, 380)  # 25
+  x = _grouped_context_conv(x, 448, 3, 2, 512)
+  x = _grouped_reduce_conv(x, 512, 3, 4, 512)  # 12
   x = _grouped_context_conv(x, 512, 3, 2, 512)
-  x = GlobalAveragePooling1D()(x)
   x = Dropout(0.3)(x)
+  x = Flatten()(Conv1D(256, 7, use_bias=False)(x))
+  x = Dropout(0.2)(x)
   x = Dense(num_classes, activation='softmax')(x)
   x = Reshape([-1])(x)
 
