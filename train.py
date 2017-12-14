@@ -75,10 +75,10 @@ if __name__ == '__main__':
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training')
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation')
   model = speech_model(
-      'conv_1d_gru',
+      'conv_1d_time_sliced',
       model_settings['fingerprint_size'] if compute_mfcc else sample_rate,
       num_classes=model_settings['label_count'])
-  # embed()
+  embed()
   model.fit_generator(
       train_gen, ap.set_size('training') // batch_size,
       epochs=200, verbose=1, callbacks=[
@@ -88,9 +88,9 @@ if __name__ == '__main__':
               wanted_words=prepare_words_list(get_classes(wanted_only=True)),
               all_words=prepare_words_list(classes),
               label2int=ap.word_to_index),
-          TensorBoard(log_dir='logs_062'),
+          TensorBoard(log_dir='logs_063'),
           ModelCheckpoint(
-              'checkpoints_062/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5'),
+              'checkpoints_063/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5'),
           ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                             factor=0.5, patience=4, verbose=1)])
 

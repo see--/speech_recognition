@@ -487,7 +487,7 @@ def conv_1d_gru_model(input_size=16000, num_classes=11):
   Returns:
     Compiled keras model
   """
-  def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
+  def _reduce_conv(x, num_filters, k, strides=2, padding='same'):
     x = _depthwise_conv_block(
         x, num_filters, k, padding=padding, use_bias=False,
         strides=strides)
@@ -503,13 +503,12 @@ def conv_1d_gru_model(input_size=16000, num_classes=11):
   x = input_layer
   x = PreprocessRaw(x)
   x = Reshape([-1, 1])(x)
-  x = _reduce_conv(x, 128, 127, strides=16)  # 1000
+  x = _reduce_conv(x, 128, 63, strides=16)  # 1000
   x = _reduce_conv(x, 256, 31, strides=4)  # 250
-  x = _reduce_conv(x, 320, 3, strides=2)  # 64
-  x = _reduce_conv(x, 384, 3, strides=2)  # 32
-  x = _reduce_conv(x, 448, 3, strides=2)  # 16
-  x = _reduce_conv(x, 512, 3, strides=2)  # 8
-  x = _context_conv(x, 576, 14)  # 8
+  x = _reduce_conv(x, 384, 15, strides=4)  # 64
+  x = _reduce_conv(x, 448, 7, strides=4)  # 16
+  x = _reduce_conv(x, 512, 5, strides=2)  # 8
+  x = _context_conv(x, 512, 8)  # 8
   x = Flatten()(x)
   x = Dropout(0.3)(x)
   x = Activation(relu6)(Dense(256)(x))
@@ -682,8 +681,7 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
     x = Add()([x, residual])
     return x
 
-  x = Reshape([50, 320])(x)
-  x = Lambda(lambda x: K.permute_dimensions(x, pattern=(0, 2, 1)))(x)
+  x = Reshape([400, 40])(x)
   x = _context_conv(x, 64, 5)
   x = _reduce_conv(x, 128, 3)  # 160
   x = _context_conv(x, 128, 5)
@@ -700,7 +698,7 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
 
   model = Model(input_layer, x, name='conv_1d_time_sliced')
   model.compile(
-      optimizer=keras.optimizers.Adam(lr=4e-3),
+      optimizer=keras.optimizers.RMSprop(lr=1e-3),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
