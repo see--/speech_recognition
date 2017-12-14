@@ -2,7 +2,7 @@ import keras
 from keras import backend as K
 from keras.layers import Dense, Input, Lambda, Conv1D, AveragePooling1D
 from keras.layers import Reshape, Flatten, Add
-from keras.layers import Conv2D, MaxPool2D, MaxPool1D
+from keras.layers import Conv2D, MaxPool2D, MaxPool1D, ZeroPadding1D
 from keras.layers import BatchNormalization, Activation
 from keras.layers import GlobalAveragePooling2D, MaxPool1D
 from keras.layers import Dropout, Add, GlobalAveragePooling1D
@@ -750,21 +750,26 @@ def conv_1d_time_sliced_group_model(input_size=16000, num_classes=11):
       return groups[0]
     return Concatenate()(groups)
 
-  x = Reshape([400, 40])(x)
-  x = _grouped_context_conv(x, 64, 3, 2, 40)
-  x = _grouped_reduce_conv(x, 128, 3, 4, 64)  # 200
-  x = _grouped_context_conv(x, 128, 3, 2, 128)
-  x = _grouped_reduce_conv(x, 256, 3, 4, 128)  # 100
-  x = _grouped_context_conv(x, 256, 3, 2, 256)
-  x = _grouped_reduce_conv(x, 384, 3, 4, 256)  # 50
-  x = _grouped_context_conv(x, 384, 3, 2, 380)
-  x = _grouped_reduce_conv(x, 448, 3, 4, 380)  # 25
-  x = _grouped_context_conv(x, 448, 3, 2, 512)
-  x = _grouped_reduce_conv(x, 512, 3, 4, 512)  # 12
-  x = _grouped_context_conv(x, 512, 3, 2, 512)
+  x500 = Reshape([500, 32])(x)
+  x500 = _grouped_reduce_conv(x500, 64, 3, 4, 32)  # 250
+  x500 = _grouped_reduce_conv(x500, 128, 3, 2, 64)  # 125
+  x500 = _grouped_reduce_conv(x500, 256, 3, 4, 128)  # 64
+  x500 = _grouped_reduce_conv(x500, 384, 3, 2, 256)  # 32
+  x500 = _grouped_reduce_conv(x500, 448, 3, 4, 384)  # 16
+  x500 = _grouped_reduce_conv(x500, 512, 3, 2, 448)  # 6
+
+  x400 = Reshape([400, 40])(x)
+  x400 = _grouped_reduce_conv(x400, 64, 3, 4, 40)  # 200
+  x400 = _grouped_reduce_conv(x400, 128, 3, 2, 64)  # 100
+  x400 = _grouped_reduce_conv(x400, 256, 3, 4, 128)  # 50
+  x400 = _grouped_reduce_conv(x400, 384, 3, 2, 256)  # 25
+  x400 = _grouped_reduce_conv(x400, 448, 3, 4, 384)  # 12
+  x400 = _grouped_reduce_conv(x400, 512, 3, 2, 448)  # 5
+  x400 = ZeroPadding1D(padding=(1, 0))(x400)  # 6
+
+  x = Concatenate()([x500, x400])
+  x = Flatten()(Conv1D(256, 6)(x))
   x = Dropout(0.3)(x)
-  x = Flatten()(Conv1D(256, 7, use_bias=False)(x))
-  x = Dropout(0.2)(x)
   x = Dense(num_classes, activation='softmax')(x)
   x = Reshape([-1])(x)
 
