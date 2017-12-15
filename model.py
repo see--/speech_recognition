@@ -923,14 +923,14 @@ def conv_1d_learned_spec_model(input_size=16000, num_classes=11):
   x = input_layer
   x = PreprocessRaw(x)
   x = Reshape([-1, 1])(x)
-  x = Conv1D(252, 479, strides=160)(x)  # 100
-  x = _grouped_reduce_conv(x, 300, 3, 3, 252)  # 50
+  x = Conv1D(252, 479, strides=160)(x)  # 98
+  x = _grouped_reduce_conv(x, 300, 3, 3, 252)  # 48
   x = _grouped_context_conv(x, 300, 3, 2, 300)
-  x = _grouped_reduce_conv(x, 360, 3, 3, 300)  # 25
+  x = _grouped_reduce_conv(x, 360, 3, 3, 300)  # 22
   x = _grouped_context_conv(x, 360, 3, 2, 360)
-  x = _grouped_reduce_conv(x, 420, 3, 3, 360)  # 12
+  x = _grouped_reduce_conv(x, 420, 3, 3, 360)  # 9
   x = _grouped_context_conv(x, 420, 3, 2, 360)
-  x = _grouped_reduce_conv(x, 480, 3, 3, 420)  # 6
+  x = _grouped_reduce_conv(x, 480, 3, 3, 420)  # 3
   x = _grouped_context_conv(x, 480, 3, 2, 480)
   x = Flatten()(x)
   x = Dropout(0.05)(x)
@@ -939,6 +939,80 @@ def conv_1d_learned_spec_model(input_size=16000, num_classes=11):
   model = Model(input_layer, x, name='conv_1d_learned_spec')
   model.compile(
       optimizer=keras.optimizers.RMSprop(lr=1e-3),
+      loss=keras.losses.categorical_crossentropy,
+      metrics=[keras.metrics.categorical_accuracy])
+  return model
+
+
+def conv_1d_top_down_model(input_size=16000, num_classes=11):
+  """ Creates a 1D model for temporal data. Note: Use only
+  with compute_mfcc = False (e.g. raw waveform data).
+  Args:
+    input_size: How big the input vector is.
+    num_classes: How many classes are to be recognized.
+  Returns:
+    Compiled keras model
+  """
+  def _grouped_reduce_conv(x, num_filters, k, g, num_channels,
+                           strides=2, padding='valid'):
+    groups = []
+    assert g >= 1
+    assert num_channels % g == 0
+    assert num_filters % g == 0
+    group_size = int(num_channels / g)
+    num_filters_per_group = int(num_filters / g)
+    for i in range(g):
+      group_start = i * group_size
+      group_end = (i + 1) * group_size
+      group = Lambda(lambda x: x[:, :, group_start: group_end])(x)
+      group = _depthwise_conv_block(
+          group, num_filters_per_group, k, padding=padding, use_bias=False,
+          strides=strides)
+      groups.append(group)
+    if g == 1:
+      return groups[0]
+    return Concatenate()(groups)
+
+  def _grouped_context_conv(x, num_filters, k, g, num_channels,
+                            dilation_rate=1, padding='valid'):
+    groups = []
+    assert g >= 1
+    assert num_channels % g == 0
+    assert num_filters % g == 0
+    group_size = int(num_channels / g)
+    num_filters_per_group = int(num_filters / g)
+    for i in range(g):
+      group_start = i * group_size
+      group_end = (i + 1) * group_size
+      group = Lambda(lambda x: x[:, :, group_start: group_end])(x)
+      group = _depthwise_conv_block(
+          x, num_filters_per_group, k, use_bias=False,
+          padding=padding, dilation_rate=dilation_rate)
+      groups.append(group)
+    if g == 1:
+      return groups[0]
+    return Concatenate()(groups)
+
+  input_layer = Input(shape=[input_size])
+  x = input_layer
+  x = PreprocessRaw(x)
+  x = Reshape([-1, 1])(x)
+  x = Conv1D(480, 479, strides=160)(x)  # 98
+  x = _grouped_reduce_conv(x, 420, 3, 3, 480)  # 48
+  x = _grouped_context_conv(x, 420, 3, 2, 420)
+  x = _grouped_reduce_conv(x, 360, 3, 3, 300)  # 22
+  x = _grouped_context_conv(x, 360, 3, 2, 360)
+  x = _grouped_reduce_conv(x, 300, 3, 3, 360)  # 9
+  x = _grouped_context_conv(x, 300, 3, 2, 300)
+  x = _grouped_reduce_conv(x, 240, 3, 3, 300)  # 3
+  x = _grouped_context_conv(x, 240, 3, 2, 240)
+  x = Flatten()(x)
+  x = Dropout(0.05)(x)
+  x = Dense(num_classes, activation='softmax')(x)
+
+  model = Model(input_layer, x, name='conv_1d_top_down')
+  model.compile(
+      optimizer=keras.optimizers.RMSprop(lr=3e-3),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
@@ -975,6 +1049,8 @@ def speech_model(model_type, input_size, num_classes=11):
     return conv_inception_d1_model(input_size, num_classes)
   elif model_type == 'conv_1d_learned_spec':
     return conv_1d_learned_spec_model(input_size, num_classes)
+  elif model_type == 'conv_1d_top_down':
+    return conv_1d_top_down_model(input_size, num_classes)
   else:
     raise ValueError("Invalid model: %s" % model_type)
 
