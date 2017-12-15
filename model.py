@@ -891,9 +891,11 @@ def conv_1d_learned_spec_model(input_size=16000, num_classes=11):
       group_start = i * group_size
       group_end = (i + 1) * group_size
       group = Lambda(lambda x: x[:, :, group_start: group_end])(x)
-      group = _depthwise_conv_block(
-          group, num_filters_per_group, k, padding=padding, use_bias=False,
-          strides=strides)
+      group = Conv1D(
+          num_filters_per_group, k, padding=padding, use_bias=False,
+          strides=strides)(group)
+      group = BatchNormalization()(group)
+      group = Activation(relu6)(group)
       groups.append(group)
     if g == 1:
       return groups[0]
@@ -911,9 +913,11 @@ def conv_1d_learned_spec_model(input_size=16000, num_classes=11):
       group_start = i * group_size
       group_end = (i + 1) * group_size
       group = Lambda(lambda x: x[:, :, group_start: group_end])(x)
-      group = _depthwise_conv_block(
-          x, num_filters_per_group, k, use_bias=False,
-          padding=padding, dilation_rate=dilation_rate)
+      group = Conv1D(
+          num_filters_per_group, k, use_bias=False,
+          padding=padding, dilation_rate=dilation_rate)(group)
+      group = BatchNormalization()(group)
+      group = Activation(relu6)(group)
       groups.append(group)
     if g == 1:
       return groups[0]
@@ -924,21 +928,21 @@ def conv_1d_learned_spec_model(input_size=16000, num_classes=11):
   x = PreprocessRaw(x)
   x = Reshape([-1, 1])(x)
   x = Conv1D(252, 479, strides=160)(x)  # 98
-  x = _grouped_reduce_conv(x, 300, 3, 3, 252)  # 48
-  x = _grouped_context_conv(x, 300, 3, 2, 300)
-  x = _grouped_reduce_conv(x, 360, 3, 3, 300)  # 22
-  x = _grouped_context_conv(x, 360, 3, 2, 360)
-  x = _grouped_reduce_conv(x, 420, 3, 3, 360)  # 9
-  x = _grouped_context_conv(x, 420, 3, 2, 360)
-  x = _grouped_reduce_conv(x, 480, 3, 3, 420)  # 3
-  x = _grouped_context_conv(x, 480, 3, 2, 480)
+  x = _grouped_reduce_conv(x, 300, 3, 6, 252)  # 48
+  x = _grouped_context_conv(x, 300, 3, 5, 300)
+  x = _grouped_reduce_conv(x, 360, 3, 6, 300)  # 22
+  x = _grouped_context_conv(x, 360, 3, 5, 360)
+  x = _grouped_reduce_conv(x, 420, 3, 6, 360)  # 9
+  x = _grouped_context_conv(x, 420, 3, 5, 360)
+  x = _grouped_reduce_conv(x, 480, 3, 6, 420)  # 3
+  x = _grouped_context_conv(x, 480, 3, 5, 480)
   x = Flatten()(x)
   x = Dropout(0.05)(x)
   x = Dense(num_classes, activation='softmax')(x)
 
   model = Model(input_layer, x, name='conv_1d_learned_spec')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=1e-3),
+      optimizer=keras.optimizers.RMSprop(lr=2e-3),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
