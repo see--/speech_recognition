@@ -156,9 +156,10 @@ class AudioProcessor(object):
 
   def __init__(self, data_dirs, silence_percentage, unknown_percentage,
                wanted_words, validation_percentage, testing_percentage,
-               model_settings, compute_mfcc=False):
+               model_settings, output_representation=False):
     self.data_dirs = data_dirs
-    self.compute_mfcc = compute_mfcc
+    assert output_representation in {'raw', 'spec', 'mfcc'}
+    self.output_representation = output_representation
     self.model_settings = model_settings
     for data_dir in self.data_dirs:
       self.maybe_download_and_extract_dataset(data_dir)
@@ -347,13 +348,13 @@ class AudioProcessor(object):
     background_add = tf.add(background_mul, sliced_foreground)
     self.background_clamp_ = tf.clip_by_value(background_add, -1.0, 1.0)
     # Run the spectrogram and MFCC ops to get a 2D 'fingerprint' of the audio.
-    spectrogram = contrib_audio.audio_spectrogram(
+    self.spectrogram_ = contrib_audio.audio_spectrogram(
         self.background_clamp_,
         window_size=model_settings['window_size_samples'],
         stride=model_settings['window_stride_samples'],
         magnitude_squared=True)
     self.mfcc_ = contrib_audio.mfcc(
-        spectrogram,
+        self.spectrogram_,
         wav_decoder.sample_rate,
         dct_coefficient_count=model_settings['dct_coefficient_count'])
 
@@ -402,8 +403,14 @@ class AudioProcessor(object):
     else:
       sample_count = max(0, min(how_many, len(candidates) - offset))
     # Data and labels will be populated and returned.
-    data_dim = model_settings['fingerprint_size'] \
-        if self.compute_mfcc else model_settings['desired_samples']
+    if self.output_representation == 'raw':
+      data_dim = model_settings['desired_sampels']
+    elif self.output_representation == 'spec':
+      data_dim = model_settings['spectrogram_length'] * model_settings[
+          'spectrogram_frequencies']
+    elif self.output_representation == 'mfcc':
+      data_dim = model_settings['fingerprint_size']
+
     data = np.zeros((sample_count, data_dim))
     labels = np.zeros((sample_count, model_settings['label_count']))
     desired_samples = model_settings['desired_samples']
@@ -464,12 +471,15 @@ class AudioProcessor(object):
         else:
           input_dict[self.foreground_volume_placeholder_] = 1.0
       # Run the graph to produce the output audio.
-      if self.compute_mfcc:
-        data[i - offset, :] = sess.run(
-            self.mfcc_, feed_dict=input_dict).flatten()
-      else:
+      if self.output_representation == 'raw':
         data[i - offset, :] = sess.run(
             self.background_clamp_, feed_dict=input_dict).flatten()
+      elif self.output_representation == 'spec':
+        data[i - offset, :] = sess.run(
+            self.spectrogram_, feed_dict=input_dict).flatten()
+      elif self.output_representation == 'mfcc':
+        data[i - offset, :] = sess.run(
+            self.mfcc_, feed_dict=input_dict).flatten()
       label_index = self.word_to_index[sample['label']]
       labels[i - offset, label_index] = 1
     return data, labels
