@@ -732,17 +732,15 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
     x = Add()([x, residual])
     return x
 
-  x = Reshape([640, 25])(x)
+  x = Reshape([320, 50])(x)
   x = _context_conv(x, 64, 5)
-  x = _reduce_conv(x, 128, 3)
+  x = _reduce_conv(x, 128, 3)  # 160
   x = _context_conv(x, 128, 5)
-  x = _reduce_conv(x, 256, 3)
+  x = _reduce_conv(x, 256, 3)  # 80
   x = _context_conv(x, 256, 3)
-  x = _reduce_conv(x, 380, 3)
+  x = _reduce_conv(x, 380, 3)  # 40
   x = _context_conv(x, 380, 3)
-  x = _reduce_conv(x, 448, 3)
-  x = _context_conv(x, 448, 3)
-  x = _reduce_conv(x, 512, 3)
+  x = _reduce_conv(x, 512, 3)  # 20
   x = _context_conv(x, 512, 3)
   x = GlobalAveragePooling1D()(x)
   x = Dropout(0.3)(x)
@@ -751,7 +749,7 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
 
   model = Model(input_layer, x, name='conv_1d_time_sliced')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=1e-3),
+      optimizer=keras.optimizers.RMSprop(lr=1e-4),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
