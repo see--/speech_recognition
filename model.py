@@ -127,12 +127,13 @@ def conv_1d_simple_model(input_size=16000, num_classes=11):
         use_bias=False)
     return x
 
-  x = _reduce_conv(x, 16, 15, strides=8)  # 8000
-  x = _context_conv(x, 16, 3)
-  for num_hidden in [32, 64, 96, 128, 160, 192, 256]:
+  x = _reduce_conv(x, 32, 31, strides=16)  # 8000
+  x = _context_conv(x, 32, 3)
+  for num_hidden in [64, 96, 128, 160, 192, 224]:
     x = _reduce_conv(x, num_hidden, 3)  # 4000
     x = _context_conv(x, num_hidden, 3)
-  x = Bidirectional(GRU(128, dropout=0.1, recurrent_dropout=0.1))(x)
+
+  x = Bidirectional(GRU(128, dropout=0.2, recurrent_dropout=0.2))(x)
   x = Dense(num_classes, activation='softmax')(x)
 
   model = Model(input_layer, x, name='conv_1d_time_stacked')
