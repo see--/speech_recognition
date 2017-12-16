@@ -627,6 +627,80 @@ def conv_2d_fast_model(input_size=16000, num_classes=11):
   return model
 
 
+def conv_1d_fast_model(input_size=16000, num_classes=11):
+  """ Creates a 1D model for temporal data. Note: Use only
+  with compute_mfcc = False (e.g. raw waveform data).
+  Args:
+    input_size: How big the input vector is.
+    num_classes: How many classes are to be recognized.
+  Returns:
+    Compiled keras model
+  """
+  def _grouped_reduce_conv(x, num_filters, k, g, num_channels,
+                           strides=2, padding='valid'):
+    groups = []
+    assert g >= 1
+    assert num_channels % g == 0
+    assert num_filters % g == 0
+    group_size = int(num_channels / g)
+    num_filters_per_group = int(num_filters / g)
+    for i in range(g):
+      group_start = i * group_size
+      group_end = (i + 1) * group_size
+      group = Lambda(lambda x: x[:, :, group_start: group_end])(x)
+      group = Conv1D(
+          num_filters_per_group, k, padding=padding, use_bias=False,
+          strides=strides)(group)
+      group = BatchNormalization()(group)
+      group = Activation(relu6)(group)
+      groups.append(group)
+    if g == 1:
+      return groups[0]
+    return Concatenate()(groups)
+
+  def _grouped_context_conv(x, num_filters, k, g, num_channels,
+                            dilation_rate=1, padding='valid'):
+    groups = []
+    assert g >= 1
+    assert num_channels % g == 0
+    assert num_filters % g == 0
+    group_size = int(num_channels / g)
+    num_filters_per_group = int(num_filters / g)
+    for i in range(g):
+      group_start = i * group_size
+      group_end = (i + 1) * group_size
+      group = Lambda(lambda x: x[:, :, group_start: group_end])(x)
+      group = Conv1D(
+          num_filters_per_group, k, use_bias=False,
+          padding=padding, dilation_rate=dilation_rate)(group)
+      group = BatchNormalization()(group)
+      group = Activation(relu6)(group)
+      groups.append(group)
+    if g == 1:
+      return groups[0]
+    return Concatenate()(groups)
+
+  input_layer = Input(shape=[input_size])
+  x = input_layer
+  x = PreprocessRaw(x)
+  x = Reshape([-1, 1])(x)
+  x = Conv1D(252, 479, strides=160, kernel_regularizer=l2(0.0001),
+             use_bias=False)(x)  # 98
+  x = _grouped_reduce_conv(x, 300, 15, 6, 252)  # 76
+  x = _grouped_reduce_conv(x, 360, 7, 5, 300)  # 76
+
+  x = Flatten()(x)
+  x = Dropout(0.3)(x)
+  x = Dense(num_classes, activation='softmax')(x)
+
+  model = Model(input_layer, x, name='conv_1d_learned_spec')
+  model.compile(
+      optimizer=keras.optimizers.RMSprop(lr=3e-3),
+      loss=keras.losses.categorical_crossentropy,
+      metrics=[keras.metrics.categorical_accuracy])
+  return model
+
+
 def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
@@ -904,18 +978,27 @@ def conv_1d_learned_spec_model(input_size=16000, num_classes=11):
   x = input_layer
   x = PreprocessRaw(x)
   x = Reshape([-1, 1])(x)
-  x = Conv1D(252, 479, strides=100, kernel_regularizer=l2(0.0001),
-             use_bias=False)(x)  # 156
-  x = _grouped_context_conv(x, 300, 3, 6, 252)
-  x = _grouped_reduce_conv(x, 360, 3, 5, 300)  # 76
-  x = _grouped_context_conv(x, 360, 3, 6, 360)
-  x = _grouped_reduce_conv(x, 420, 3, 5, 360)  # 22
-  x = _grouped_context_conv(x, 420, 3, 6, 420)
-  x = _grouped_reduce_conv(x, 480, 3, 5, 420)  # 9
-  x = _grouped_context_conv(x, 480, 3, 6, 480)
-  x = _grouped_reduce_conv(x, 540, 3, 5, 480)  # 3
-  x = _grouped_context_conv(x, 540, 3, 6, 540)
-  x = _grouped_context_conv(x, 600, 4, 2, 540)
+  xw479 = Conv1D(40, 479, strides=160, kernel_regularizer=l2(0.0001),
+                 use_bias=False, padding='same')(x)
+  xw383 = Conv1D(40, 383, strides=160, kernel_regularizer=l2(0.0001),
+                 use_bias=False, padding='same')(x)
+  xw319 = Conv1D(40, 319, strides=160, kernel_regularizer=l2(0.0001),
+                 use_bias=False, padding='same')(x)
+  xw255 = Conv1D(40, 255, strides=160, kernel_regularizer=l2(0.0001),
+                 use_bias=False, padding='same')(x)
+  xw191 = Conv1D(40, 191, strides=160, kernel_regularizer=l2(0.0001),
+                 use_bias=False, padding='same')(x)
+  xw161 = Conv1D(40, 161, strides=160, kernel_regularizer=l2(0.0001),
+                 use_bias=False, padding='same')(x)
+  x = Concatenate()([xw479, xw383, xw319, xw255, xw191, xw161])
+  x = _grouped_reduce_conv(x, 300, 3, 3, 240)  # 76
+  x = _grouped_context_conv(x, 300, 3, 2, 360)
+  x = _grouped_reduce_conv(x, 360, 3, 3, 300)  # 22
+  x = _grouped_context_conv(x, 360, 3, 2, 360)
+  x = _grouped_reduce_conv(x, 420, 3, 3, 240)  # 9
+  x = _grouped_context_conv(x, 420, 3, 2, 420)
+  x = _grouped_reduce_conv(x, 480, 3, 3, 420)  # 3
+  x = _grouped_context_conv(x, 480, 3, 2, 480)
   x = Flatten()(x)
   x = Dropout(0.3)(x)
   x = Dense(num_classes, activation='softmax')(x)
@@ -1112,6 +1195,8 @@ def speech_model(model_type, input_size, num_classes=11):
     return conv_1d_learned_spec_model(input_size, num_classes)
   elif model_type == 'conv_1d_spec':
     return conv_1d_spec_model(input_size, num_classes)
+  elif model_type == 'conv_1d_fast':
+    return conv_1d_fast_model(input_size, num_classes)
   elif model_type == 'conv_1d_top_down':
     return conv_1d_top_down_model(input_size, num_classes)
   else:

@@ -83,8 +83,8 @@ if __name__ == '__main__':
           wanted_words=prepare_words_list(get_classes(wanted_only=True)),
           all_words=prepare_words_list(classes),
           label2int=ap.word_to_index),
-      TensorBoard(log_dir='logs_074'),
-      ModelCheckpoint('checkpoints_074/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5'),
+      TensorBoard(log_dir='logs_076'),
+      ModelCheckpoint('checkpoints_076/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5'),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=4, verbose=1)]
   model.fit_generator(
