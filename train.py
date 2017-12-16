@@ -55,7 +55,7 @@ if __name__ == '__main__':
   add_pseudo = False
   if add_pseudo:
     data_dirs.append('data/pseudo/audio')
-  output_representation = 'spec'
+  output_representation = 'raw'
   sample_rate = 16000
   batch_size = 384
   classes = get_classes(wanted_only=False, extend_reversed=False)
@@ -63,6 +63,7 @@ if __name__ == '__main__':
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
       clip_duration_ms=1000, window_size_ms=30.0, window_stride_ms=10.0,
       dct_coefficient_count=40)
+  # embed()
   ap = AudioProcessor(
       data_dirs=data_dirs, wanted_words=classes,
       silence_percentage=15.0, unknown_percentage=3.0,
@@ -72,7 +73,7 @@ if __name__ == '__main__':
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training')
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation')
   model = speech_model(
-      'conv_1d_spec',
+      'conv_1d_simple',
       model_settings['fingerprint_size'] if output_representation == 'mfcc' else sample_rate,  # noqa
       num_classes=model_settings['label_count'])
   embed()
@@ -82,8 +83,8 @@ if __name__ == '__main__':
           wanted_words=prepare_words_list(get_classes(wanted_only=True)),
           all_words=prepare_words_list(classes),
           label2int=ap.word_to_index),
-      TensorBoard(log_dir='logs_072'),
-      ModelCheckpoint('checkpoints_072/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5'),
+      TensorBoard(log_dir='logs_073'),
+      ModelCheckpoint('checkpoints_073/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5'),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=4, verbose=1)]
   model.fit_generator(

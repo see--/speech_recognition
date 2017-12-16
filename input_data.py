@@ -404,7 +404,7 @@ class AudioProcessor(object):
       sample_count = max(0, min(how_many, len(candidates) - offset))
     # Data and labels will be populated and returned.
     if self.output_representation == 'raw':
-      data_dim = model_settings['desired_sampels']
+      data_dim = model_settings['desired_samples']
     elif self.output_representation == 'spec':
       data_dim = model_settings['spectrogram_length'] * model_settings[
           'spectrogram_frequencies']

@@ -116,47 +116,23 @@ def conv_1d_simple_model(input_size=16000, num_classes=11):
   x = Reshape([-1, 1])(x)
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
-    x = Conv1D(num_filters, k, padding=padding, strides=strides,
-               kernel_regularizer=l2(0.00001), use_bias=False)(x)
-    x = BatchNormalization()(x)
-    x = Activation(relu6)(x)
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding=padding, use_bias=False,
+        strides=strides)
     return x
 
   def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
-    x = Conv1D(num_filters, k, padding=padding, dilation_rate=dilation_rate,
-               kernel_regularizer=l2(0.00001), use_bias=False)(x)
-    x = BatchNormalization()(x)
-    x = Activation(relu6)(x)
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding=padding, dilation_rate=dilation_rate,
+        use_bias=False)
     return x
 
-  x = _reduce_conv(x, 32, 5, strides=4)  # 4000
-  x = _context_conv(x, 48, 3)
-  x = _reduce_conv(x, 64, 3)  # 2000
-  x = _context_conv(x, 48, 1)
-  x = _context_conv(x, 72, 3)
-  x = _reduce_conv(x, 72, 3)  # 1000
-  x = _context_conv(x, 64, 1)
-  x = _context_conv(x, 96, 3)
-  x = _reduce_conv(x, 96, 3)  # 500
-  x = _context_conv(x, 72, 1)
-  x = _context_conv(x, 128, 3)
-  x = _reduce_conv(x, 128, 3)  # 250
-  x = _context_conv(x, 96, 1)
-  x = _context_conv(x, 160, 3)
-  x = _reduce_conv(x, 160, 3)  # 125
-  x = _context_conv(x, 128, 1)
-  x = _context_conv(x, 192, 3)
-  x = _reduce_conv(x, 192, 3)  # 64
-  x = _context_conv(x, 160, 1)
-  x = _context_conv(x, 256, 3)
-  x = _reduce_conv(x, 256, 3)  # 64
-  x = _context_conv(x, 192, 1)
-  x = _context_conv(x, 288, 3)
-  x = _reduce_conv(x, 288, 3)  # 64
-  x = _context_conv(x, 256, 1)
-  x = _context_conv(x, 288, 3)
-
-  x = Bidirectional(GRU(144, dropout=0.1, recurrent_dropout=0.1))(x)
+  x = _reduce_conv(x, 16, 15, strides=8)  # 8000
+  x = _context_conv(x, 16, 3)
+  for num_hidden in [32, 64, 96, 128, 160, 192, 256]:
+    x = _reduce_conv(x, num_hidden, 3)  # 4000
+    x = _context_conv(x, num_hidden, 3)
+  x = Bidirectional(GRU(128, dropout=0.1, recurrent_dropout=0.1))(x)
   x = Dense(num_classes, activation='softmax')(x)
 
   model = Model(input_layer, x, name='conv_1d_time_stacked')
@@ -1014,7 +990,7 @@ def conv_1d_spec_model(input_size=16000, num_classes=11):
   x = _grouped_reduce_conv(x, 480, 3, 4, 420)  # 3
   x = _grouped_context_conv(x, 480, 3, 3, 480)
   x = Flatten()(x)
-  x = Dropout(0.05)(x)
+  x = Dropout(0.3)(x)
   x = Dense(num_classes, activation='softmax')(x)
 
   model = Model(input_layer, x, name='conv_1d_spec')
