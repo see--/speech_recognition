@@ -716,7 +716,8 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
     x = _depthwise_conv_block(
-        x, num_filters, k, padding=padding, use_bias=False, strides=strides)
+        x, num_filters, k, padding=padding, use_bias=False)
+    x = MaxPool1D(pool_size=3, strides=strides, padding='same')(x)
     return x
 
   def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
@@ -725,15 +726,21 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
         use_bias=False)
     return x
 
+  def _residual_block(x, num_filters, k):
+    residual = _context_conv(x, num_filters, k, padding='same')
+    residual = _context_conv(residual, num_filters, k, padding='same')
+    x = Add()([x, residual])
+    return x
+
   x = Reshape([400, 40])(x)
   x = _context_conv(x, 64, 5)
-  x = _reduce_conv(x, 128, 3)  # 200
+  x = _reduce_conv(x, 128, 3)  # 160
   x = _context_conv(x, 128, 5)
-  x = _reduce_conv(x, 256, 3)  # 100
+  x = _reduce_conv(x, 256, 3)  # 80
   x = _context_conv(x, 256, 3)
-  x = _reduce_conv(x, 380, 3)  # 50
+  x = _reduce_conv(x, 380, 3)  # 40
   x = _context_conv(x, 380, 3)
-  x = _reduce_conv(x, 512, 3)  # 25
+  x = _reduce_conv(x, 512, 3)  # 20
   x = _context_conv(x, 512, 3)
   x = GlobalAveragePooling1D()(x)
   x = Dropout(0.3)(x)
