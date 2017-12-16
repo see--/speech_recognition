@@ -732,16 +732,17 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
     x = Add()([x, residual])
     return x
 
-  x = Reshape([40, 400])(x)
-  x = Lambda(lambda x: K.permute_dimensions(x, (0, 2, 1)))(x)
+  x = Reshape([640, 25])(x)
   x = _context_conv(x, 64, 5)
-  x = _reduce_conv(x, 128, 3)  # 160
+  x = _reduce_conv(x, 128, 3)
   x = _context_conv(x, 128, 5)
-  x = _reduce_conv(x, 256, 3)  # 80
+  x = _reduce_conv(x, 256, 3)
   x = _context_conv(x, 256, 3)
-  x = _reduce_conv(x, 380, 3)  # 40
+  x = _reduce_conv(x, 380, 3)
   x = _context_conv(x, 380, 3)
-  x = _reduce_conv(x, 512, 3)  # 20
+  x = _reduce_conv(x, 448, 3)
+  x = _context_conv(x, 448, 3)
+  x = _reduce_conv(x, 512, 3)
   x = _context_conv(x, 512, 3)
   x = GlobalAveragePooling1D()(x)
   x = Dropout(0.3)(x)
