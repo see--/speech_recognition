@@ -732,7 +732,8 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
     x = Add()([x, residual])
     return x
 
-  x = Reshape([400, 40])(x)
+  x = Reshape([40, 400])(x)
+  x = Lambda(lambda x: K.permute_dimensions(x, (0, 2, 1)))(x)
   x = _context_conv(x, 64, 5)
   x = _reduce_conv(x, 128, 3)  # 160
   x = _context_conv(x, 128, 5)
