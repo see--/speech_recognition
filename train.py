@@ -73,10 +73,10 @@ if __name__ == '__main__':
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training')
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation')
   model = speech_model(
-      'conv_1d_simple',
+      'conv_1d_learned_spec',
       model_settings['fingerprint_size'] if output_representation == 'mfcc' else sample_rate,  # noqa
       num_classes=model_settings['label_count'])
-  embed()
+  # embed()
   callbacks = [
       ConfusionMatrixCallback(
           val_gen, ap.set_size('validation') // batch_size,

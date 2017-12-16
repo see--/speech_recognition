@@ -9,7 +9,7 @@ from keras.layers import Dropout, Add, GlobalAveragePooling1D
 from keras.layers import LSTM, GRU, Bidirectional
 from keras.layers import Concatenate, AveragePooling2D
 from keras.layers.noise import AlphaDropout
-from keras.regularizers import l2
+from keras.regularizers import l2, l1
 from keras.models import Model
 from keras.applications.mobilenet import DepthwiseConv2D
 
@@ -904,17 +904,20 @@ def conv_1d_learned_spec_model(input_size=16000, num_classes=11):
   x = input_layer
   x = PreprocessRaw(x)
   x = Reshape([-1, 1])(x)
-  x = Conv1D(252, 479, strides=160)(x)  # 98
-  x = _grouped_reduce_conv(x, 300, 3, 6, 252)  # 48
-  x = _grouped_context_conv(x, 300, 3, 5, 300)
-  x = _grouped_reduce_conv(x, 360, 3, 6, 300)  # 22
-  x = _grouped_context_conv(x, 360, 3, 5, 360)
-  x = _grouped_reduce_conv(x, 420, 3, 6, 360)  # 9
-  x = _grouped_context_conv(x, 420, 3, 5, 360)
-  x = _grouped_reduce_conv(x, 480, 3, 6, 420)  # 3
-  x = _grouped_context_conv(x, 480, 3, 5, 480)
+  x = Conv1D(252, 479, strides=100, kernel_regularizer=l2(0.0001),
+             use_bias=False)(x)  # 156
+  x = _grouped_context_conv(x, 300, 3, 6, 252)
+  x = _grouped_reduce_conv(x, 360, 3, 5, 300)  # 76
+  x = _grouped_context_conv(x, 360, 3, 6, 360)
+  x = _grouped_reduce_conv(x, 420, 3, 5, 360)  # 22
+  x = _grouped_context_conv(x, 420, 3, 6, 420)
+  x = _grouped_reduce_conv(x, 480, 3, 5, 420)  # 9
+  x = _grouped_context_conv(x, 480, 3, 6, 480)
+  x = _grouped_reduce_conv(x, 540, 3, 5, 480)  # 3
+  x = _grouped_context_conv(x, 540, 3, 6, 540)
+  x = _grouped_context_conv(x, 600, 4, 2, 540)
   x = Flatten()(x)
-  x = Dropout(0.05)(x)
+  x = Dropout(0.3)(x)
   x = Dense(num_classes, activation='softmax')(x)
 
   model = Model(input_layer, x, name='conv_1d_learned_spec')
