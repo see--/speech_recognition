@@ -64,6 +64,18 @@ def time_slice_stack(x, step):
     return x_slices
 
 
+def overlapping_time_slice_stack(x, ksize, stride):
+    from tensorflow import extract_image_patches as extract
+    ksizes = [1, 1, ksize, 1]
+    strides = [1, 1, stride, 1]
+    rates = [1, 1, 1, 1]
+    N, W = K.int_shape(x)
+    x_slices = K.reshape(x, [-1, 1, W, 1])
+    x_slices = extract(x_slices, ksizes, strides, rates, 'SAME')
+    x_slices = K.squeeze(x_slices, axis=1)
+    return x_slices
+
+
 def snn_model(input_size=16000, num_classes=11):
   input_layer = Input(shape=[input_size])
   activation = 'selu'
@@ -725,6 +737,11 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
         use_bias=False)
     return x
 
+  def _reduce_block(x, num_filters, k):
+    x = _reduce_conv(x, num_filters, k, padding='same')
+    x = _context_conv(x, num_filters, k, padding='same')
+    return x
+
   def _residual_reduce_block(x, num_filters, k):
     residual = Conv1D(num_filters, 1, strides=2, use_bias=False,
                       padding='same')(x)
@@ -736,15 +753,15 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
     x = Add()([x, residual])
     return x
 
-  x = Lambda(lambda x: time_slice_stack(x, 40))(x)
-  x = _reduce_conv(x, 64, 5)  # 250
+  x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 30))(x)
+  x = _reduce_conv(x, 64, 3)
   x = _context_conv(x, 64, 3)
-  x = _residual_reduce_block(x, 96, 3)
-  x = _residual_reduce_block(x, 128, 3)
-  x = _residual_reduce_block(x, 256, 3)
-  x = _residual_reduce_block(x, 320, 3)
-  x = _residual_reduce_block(x, 384, 3)
-  x = _residual_reduce_block(x, 448, 3)
+  x = _reduce_block(x, 128, 3)
+  x = _reduce_block(x, 192, 3)
+  x = _reduce_block(x, 256, 3)
+  x = _reduce_block(x, 320, 3)
+  x = _reduce_block(x, 384, 3)
+  x = _reduce_block(x, 448, 3)
   x = GlobalAveragePooling1D()(x)
   x = Dropout(0.3)(x)
   x = Dense(num_classes, activation='softmax')(x)
@@ -752,7 +769,7 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
 
   model = Model(input_layer, x, name='conv_1d_time_sliced')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=2e-3),
+      optimizer=keras.optimizers.RMSprop(lr=1e-3),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
