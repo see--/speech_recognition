@@ -716,8 +716,7 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
     x = _depthwise_conv_block(
-        x, num_filters, k, padding=padding, use_bias=False)
-    x = MaxPool1D(pool_size=3, strides=strides, padding='same')(x)
+        x, num_filters, k, padding=padding, use_bias=False, strides=strides)
     return x
 
   def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
@@ -733,17 +732,19 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
     return x
 
   x = Reshape([1000, 16])(x)
-  x = _context_conv(x, 32, 5)
-  x = _reduce_conv(x, 64, 3)  # 160
-  x = _context_conv(x, 64, 5)
-  x = _reduce_conv(x, 128, 3)  # 80
+  x = _reduce_conv(x, 32, 7)  # 500
+  x = _context_conv(x, 32, 3)
+  x = _reduce_conv(x, 64, 5)  # 250
+  x = _context_conv(x, 64, 3)
+  x = _reduce_conv(x, 128, 3)  # 125
   x = _context_conv(x, 128, 3)
-  x = _reduce_conv(x, 256, 3)  # 40
+  x = _reduce_conv(x, 256, 3)  # 64
   x = _context_conv(x, 256, 3)
-  x = _reduce_conv(x, 380, 3)  # 20
-  x = _context_conv(x, 380, 3)
-  x = _reduce_conv(x, 448, 3)  # 20
+  x = _reduce_conv(x, 384, 3)  # 32
+  x = _context_conv(x, 384, 3)
+  x = _reduce_conv(x, 448, 3)  # 16
   x = _context_conv(x, 448, 3)
+  x = _reduce_conv(x, 512, 3)  # 4
   x = GlobalAveragePooling1D()(x)
   x = Dropout(0.3)(x)
   x = Dense(num_classes, activation='softmax')(x)

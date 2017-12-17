@@ -36,13 +36,14 @@ def map_to_wanted(labels, wanted_words):
 if __name__ == '__main__':
   test_fns = sorted(glob('data/test/audio/*.wav'))
   sess = K.get_session()
+  K.set_learning_phase(0)
   use_tta = False
   tta_volume = 1.2
   wanted_only = False
   extend_reversed = False
   compute_mfcc = False
   sample_rate = 16000
-  batch_size = 128
+  batch_size = 512
   wanted_words = prepare_words_list(get_classes(wanted_only=True))
   classes = get_classes(
       wanted_only=wanted_only, extend_reversed=extend_reversed)
@@ -68,7 +69,7 @@ if __name__ == '__main__':
       spectrogram,
       wav_decoder.sample_rate,
       dct_coefficient_count=model_settings['dct_coefficient_count'])
-  model = load_model('checkpoints_059/ep-059-vl-0.2212.hdf5',
+  model = load_model('checkpoints_079/ep-059-vl-0.2344.hdf5',
                      custom_objects={'relu6': relu6,
                                      'DepthwiseConv2D': DepthwiseConv2D})
   # embed()
@@ -126,15 +127,15 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_059.csv', index=False, compression=None)
+      'submission_079b.csv', index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_059_all_labels.csv', index=False, compression=None)
+      'submission_079b_all_labels.csv', index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
   all_data = pd.DataFrame({'fname': fns, 'label': labels})
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_059_all_labels_probs.csv', index=False, compression=None)
+      'submission_079b_all_labels_probs.csv', index=False, compression=None)
   print("Done!")
