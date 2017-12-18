@@ -85,9 +85,9 @@ def which_set(filename, validation_percentage, testing_percentage):
   # We want to ignore anything after '_nohash_' in the file name when
   # deciding which set to put a wav in, so the data set creator has a way of
   # grouping wavs that are close variations of each other.
-  # always add pseudo labels to training
+  # TODO(see--): handle pseudo labels better
   if base_name.find('_nohash_') == -1:
-    return 'training'
+    return 'pseudo'
   hash_name = re.sub(r'_nohash_.*$', '', base_name)
   # This looks a bit magical, but we need to decide whether this file should
   # go into the training, testing, or validation sets, and we want to keep
@@ -205,8 +205,10 @@ class AudioProcessor(object):
     wanted_words_index = {}
     for index, wanted_word in enumerate(wanted_words):
       wanted_words_index[wanted_word] = index + 2
-    self.data_index = {'validation': [], 'testing': [], 'training': []}
-    unknown_index = {'validation': [], 'testing': [], 'training': []}
+    self.data_index = {'validation': [], 'testing': [], 'training': [],
+                       'pseudo': []}
+    unknown_index = {'validation': [], 'testing': [], 'training': [],
+                     'pseudo': []}
     all_words = {}
     # Look through all the subfolders to find audio samples
     for data_dir in self.data_dirs:
@@ -220,7 +222,7 @@ class AudioProcessor(object):
           continue
         all_words[word] = True
         set_index = which_set(
-          wav_path, validation_percentage, testing_percentage)
+            wav_path, validation_percentage, testing_percentage)
         # If it's a known class, store its detail, otherwise add it to the list
         # we'll use to train the unknown label.
         if word in wanted_words_index:
@@ -237,7 +239,7 @@ class AudioProcessor(object):
     # We need an arbitrary file to load as the input for the silence samples.
     # It's multiplied by zero later, so the content doesn't matter.
     silence_wav_path = self.data_index['training'][0]['file']
-    for set_index in ['validation', 'testing', 'training']:
+    for set_index in ['validation', 'testing', 'training', 'pseudo']:
       set_size = len(self.data_index[set_index])
       silence_size = int(math.ceil(set_size * silence_percentage / 100))
       for _ in range(silence_size):
@@ -248,9 +250,11 @@ class AudioProcessor(object):
       # Pick some unknowns to add to each partition of the data set.
       random.shuffle(unknown_index[set_index])
       unknown_size = int(math.ceil(set_size * unknown_percentage / 100))
-      self.data_index[set_index].extend(unknown_index[set_index][:unknown_size])
+      self.data_index[set_index].extend(
+          unknown_index[set_index][:unknown_size])
     # Make sure the ordering is random.
-    for set_index in ['validation', 'testing', 'training']:
+    for set_index in ['validation', 'testing', 'training', 'pseudo']:
+      # not really needed since the indices are chosen by random
       random.shuffle(self.data_index[set_index])
     # Prepare the rest of the result data structure.
     self.words_list = prepare_words_list(wanted_words)
@@ -362,7 +366,8 @@ class AudioProcessor(object):
     """Calculates the number of samples in the dataset partition.
 
     Args:
-      mode: Which partition, must be 'training', 'validation', or 'testing'.
+      mode: Which partition, must be 'training', 'validation', 'testing',
+            or 'pseudo'.
 
     Returns:
       Number of samples in the partition.
@@ -372,7 +377,7 @@ class AudioProcessor(object):
   def get_data(self, how_many, offset,
                background_frequency, background_volume_range,
                foreground_frequency, foreground_volume_range,
-               time_shift, mode, sess):
+               time_shift, mode, sess, pseudo_frequency=0.0):
     """Gather samples from the data set, applying transformations as needed.
 
     When the mode is 'training', a random selection of samples will be returned,
@@ -387,8 +392,8 @@ class AudioProcessor(object):
         1.0.
       background_volume_range: How loud the background noise will be.
       time_shift: How much to randomly shift the clips by in time.
-      mode: Which partition to use, must be 'training', 'validation', or
-        'testing'.
+      mode: Which partition to use, must be 'training', 'validation',
+        'testing' or 'pseudo'.
       sess: TensorFlow session that was active when processor was created.
 
     Returns:
@@ -398,6 +403,7 @@ class AudioProcessor(object):
     # Pick one of the partitions to choose samples from.
     model_settings = self.model_settings
     candidates = self.data_index[mode]
+    pseudo_candidates = self.data_index['pseudo']
     if how_many == -1:
       sample_count = len(candidates)
     else:
@@ -422,9 +428,15 @@ class AudioProcessor(object):
       # Pick which audio sample to use.
       if how_many == -1 or pick_deterministically:
         sample_index = i
+        sample = candidates[sample_index]
       else:
-        sample_index = np.random.randint(len(candidates))
-      sample = candidates[sample_index]
+        if np.random.uniform(0, 1) < pseudo_frequency:
+          sample_index = np.random.randint(len(pseudo_candidates))
+          sample = pseudo_candidates[sample_index]
+        else:
+          sample_index = np.random.randint(len(candidates))
+          sample = candidates[sample_index]
+
       # If we're time shifting, set up the offset for this sample.
       if time_shift > 0:
         time_shift_amount = np.random.randint(-time_shift, time_shift)
@@ -491,8 +503,8 @@ class AudioProcessor(object):
       how_many: Desired number of samples to return. -1 means the entire
         contents of this partition.
       model_settings: Information about the current model being trained.
-      mode: Which partition to use, must be 'training', 'validation', or
-        'testing'.
+      mode: Which partition to use, must be 'training', 'validation',
+        'testing' or 'pseudo'.
 
     Returns:
       List of sample data for the samples, and list of labels in one-hot form.
@@ -537,17 +549,17 @@ class AudioProcessor(object):
     print("There are %d classes." % (len(self.word_to_index)))
     print("1%% <-> %d samples in 'training'" %
           int(self.set_size('training') / 100))
-    for set_index in ['training', 'validation', 'testing']:
+    for set_index in ['training', 'validation', 'testing', 'pseudo']:
       counts = {k: 0 for k in sorted(self.word_to_index.keys())}
       num_total = self.set_size(set_index)
       for data_point in self.data_index[set_index]:
         counts[data_point['label']] += (1.0 / num_total) * 100.0
       set_counts[set_index] = counts
 
-    print("%-13s%-6s%-6s%-6s" % ('', 'Train', 'Val', 'Test'))
+    print("%-13s%-6s%-6s%-6s%-6s" % ('', 'Train', 'Val', 'Test', 'Pseudo'))
     for label_name in sorted(
             self.word_to_index.keys(), key=self.word_to_index.get):
       line = "%02d %-12s: " % (self.word_to_index[label_name], label_name)
-      for set_index in ['training', 'validation', 'testing']:
+      for set_index in ['training', 'validation', 'testing', 'pseudo']:
         line += "%.1f%% " % (set_counts[set_index][label_name])
       print(line)

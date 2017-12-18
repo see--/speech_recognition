@@ -12,16 +12,17 @@ from IPython import embed  # noqa
 
 def data_gen(audio_processor, sess,
              batch_size=128,
-             background_frequency=0.5, background_volume_range=0.3,
+             background_frequency=0.5, background_volume_range=0.2,
              foreground_frequency=0.5, foreground_volume_range=0.2,
              time_shift=(100.0 * 16000.0) / 1000,
-             mode='validation'):
+             mode='validation', pseudo_frequency=0.33):
   offset = 0
   if mode != 'training':
     background_frequency = 0.0
     background_volume_range = 0.0
     foreground_frequency = 0.0
     foreground_volume_range = 0.0
+    pseudo_frequency = 0.0
     time_shift = 0
   while True:
     X, y = audio_processor.get_data(
@@ -30,7 +31,8 @@ def data_gen(audio_processor, sess,
         background_volume_range=background_volume_range,
         foreground_frequency=foreground_frequency,
         foreground_volume_range=foreground_volume_range,
-        time_shift=time_shift, mode=mode, sess=sess)
+        time_shift=time_shift, mode=mode, sess=sess,
+        pseudo_frequency=pseudo_frequency)
     offset += batch_size
     if offset > ap.set_size(mode) - batch_size:
       offset = 0
@@ -52,7 +54,7 @@ if __name__ == '__main__':
   sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
   K.set_session(sess)
   data_dirs = ['data/train/audio']
-  add_pseudo = False
+  add_pseudo = True
   if add_pseudo:
     data_dirs.append('data/pseudo/audio')
   output_representation = 'raw'
@@ -63,10 +65,9 @@ if __name__ == '__main__':
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
       clip_duration_ms=1000, window_size_ms=30.0, window_stride_ms=10.0,
       dct_coefficient_count=40)
-  # embed()
   ap = AudioProcessor(
       data_dirs=data_dirs, wanted_words=classes,
-      silence_percentage=15.0, unknown_percentage=2.0,
+      silence_percentage=15.0, unknown_percentage=10.0,
       validation_percentage=10.0, testing_percentage=0.0,
       model_settings=model_settings,
       output_representation=output_representation)
@@ -76,15 +77,15 @@ if __name__ == '__main__':
       'conv_1d_time_sliced',
       model_settings['fingerprint_size'] if output_representation == 'mfcc' else sample_rate,  # noqa
       num_classes=model_settings['label_count'])
-  embed()
+  # embed()
   callbacks = [
       ConfusionMatrixCallback(
           val_gen, ap.set_size('validation') // batch_size,
           wanted_words=prepare_words_list(get_classes(wanted_only=True)),
           all_words=prepare_words_list(classes),
           label2int=ap.word_to_index),
-      TensorBoard(log_dir='logs_084'),
-      ModelCheckpoint('checkpoints_084/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5'),
+      TensorBoard(log_dir='logs_086'),
+      ModelCheckpoint('checkpoints_086/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5'),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=4, verbose=1)]
   model.fit_generator(
