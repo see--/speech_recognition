@@ -37,8 +37,8 @@ if __name__ == '__main__':
   test_fns = sorted(glob('data/test/audio/*.wav'))
   sess = K.get_session()
   K.set_learning_phase(0)
-  use_tta = False
-  tta_volume = 1.2
+  use_tta = True
+  tta_volume = 1.3
   wanted_only = False
   extend_reversed = False
   compute_mfcc = False
@@ -129,15 +129,15 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_086.csv', index=False, compression=None)
+      'submission_086_tta.csv', index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_086_all_labels.csv', index=False, compression=None)
+      'submission_086_tta_all_labels.csv', index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
   all_data = pd.DataFrame({'fname': fns, 'label': labels})
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_086_all_labels_probs.csv', index=False, compression=None)
+      'submission_086_tta_all_labels_probs.csv', index=False, compression=None)
   print("Done!")
