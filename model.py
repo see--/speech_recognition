@@ -739,7 +739,7 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
 
   def _reduce_block(x, num_filters, k):
     x = _reduce_conv(x, num_filters, k, padding='same')
-    x = _context_conv(x, num_filters, k, padding='same')
+    # x = _context_conv(x, num_filters, k, padding='same')
     return x
 
   def _residual_reduce_block(x, num_filters, k):
@@ -748,20 +748,19 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
     residual = BatchNormalization()(residual)
 
     x = _reduce_conv(x, num_filters, k, padding='same')
-    x = _context_conv(x, num_filters, k, padding='same')
+    # x = _context_conv(x, num_filters, k, padding='same')
 
     x = Add()([x, residual])
     return x
 
   x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 30))(x)
-  x = _reduce_conv(x, 64, 3)
-  x = _context_conv(x, 64, 3)
   x = _reduce_block(x, 128, 3)
-  x = _reduce_block(x, 192, 3)
   x = _reduce_block(x, 256, 3)
-  x = _reduce_block(x, 320, 3)
   x = _reduce_block(x, 384, 3)
   x = _reduce_block(x, 448, 3)
+  x = _reduce_block(x, 512, 3)
+  x = _reduce_block(x, 768, 3)
+  x = _reduce_block(x, 1024, 3)
   x = GlobalAveragePooling1D()(x)
   x = Dropout(0.3)(x)
   x = Dense(num_classes, activation='softmax')(x)
