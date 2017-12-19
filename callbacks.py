@@ -35,6 +35,13 @@ class ConfusionMatrixCallback(Callback):
     accuracies = np.float32(accuracies)
     return accuracies
 
+  def accuracy(self, confusion_val):
+    num_correct = 0
+    for i in range(confusion_val.shape[0]):
+      num_correct += confusion_val[i, i]
+    accuracy = float(num_correct) / confusion_val.sum()
+    return accuracy
+
   def on_epoch_end(self, epoch, logs=None):
     y_true, y_pred = [], []
     for i in range(self.validation_steps):
@@ -54,13 +61,14 @@ class ConfusionMatrixCallback(Callback):
     y_pred = [self.int2label[y] for y in y_pred]
     confusion = ConfusionMatrix(y_true, y_pred)
     accs = self.accuracies(confusion._df_confusion.values)
+    acc = self.accuracy(confusion._df_confusion.values)
     # same for wanted words
     y_true = [y if y in self.wanted_words else '_unknown_' for y in y_true]
     y_pred = [y if y in self.wanted_words else '_unknown_' for y in y_pred]
     wanted_words_confusion = ConfusionMatrix(y_true, y_pred)
     wanted_accs = self.accuracies(
         wanted_words_confusion._df_confusion.values)
-    acc_line = "\n[%03d]: val_categorical_accuracy: %.2f, val_categorical_accuracy_wanted: %.2f" % (epoch, accs.mean(), wanted_accs.mean())  # noqa
+    acc_line = "\n[%03d]: val_categorical_accuracy: %.2f, val_mean_categorical_accuracy_wanted: %.2f" % (epoch, acc, wanted_accs.mean())  # noqa
     with open('confusion_matrix.txt', 'a') as f:
       f.write('%s\n' % acc_line)
       f.write(confusion.to_dataframe().to_string())
@@ -70,5 +78,6 @@ class ConfusionMatrixCallback(Callback):
       f.write(wanted_words_confusion.to_dataframe().to_string())
 
     logs['val_loss'] = val_loss
-    logs['val_categorical_accuracy'] = accs.mean()
-    logs['val_categorical_accuracy_wanted'] = wanted_accs.mean()
+    logs['val_categorical_accuracy'] = acc
+    logs['val_mean_categorical_accuracy_all'] = accs.mean()
+    logs['val_mean_categorical_accuracy_wanted'] = wanted_accs.mean()
