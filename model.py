@@ -737,51 +737,9 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
         use_bias=False)
     return x
 
-  def _grouped_reduce_conv(x, num_filters, k, g, num_channels,
-                           strides=2, padding='valid'):
-    groups = []
-    assert g >= 1
-    assert num_channels % g == 0
-    assert num_filters % g == 0
-    group_size = int(num_channels / g)
-    num_filters_per_group = int(num_filters / g)
-    for i in range(g):
-      group_start = i * group_size
-      group_end = (i + 1) * group_size
-      group = Lambda(lambda x: x[:, :, group_start: group_end])(x)
-      group = _depthwise_conv_block(
-          group, num_filters_per_group, k, padding=padding, use_bias=False,
-          strides=strides)
-      groups.append(group)
-    if g == 1:
-      return groups[0]
-    return Concatenate()(groups)
-
-  def _grouped_context_conv(x, num_filters, k, g, num_channels,
-                            dilation_rate=1, padding='valid'):
-    groups = []
-    assert g >= 1
-    assert num_channels % g == 0
-    assert num_filters % g == 0
-    group_size = int(num_channels / g)
-    num_filters_per_group = int(num_filters / g)
-    for i in range(g):
-      group_start = i * group_size
-      group_end = (i + 1) * group_size
-      group = Lambda(lambda x: x[:, :, group_start: group_end])(x)
-      group = _depthwise_conv_block(
-          x, num_filters_per_group, k, use_bias=False,
-          padding=padding, dilation_rate=dilation_rate)
-      groups.append(group)
-    if g == 1:
-      return groups[0]
-    return Concatenate()(groups)
-
-  def _reduce_block(x, num_filters, k, num_channels):
-    x = _grouped_reduce_conv(
-        x, num_filters, k, 2, num_channels, padding='same')
-    x = _grouped_context_conv(
-        x, num_filters, k, 3, num_filters, padding='same')
+  def _reduce_block(x, num_filters, k):
+    x = _reduce_conv(x, num_filters, k, padding='same')
+    x = _context_conv(x, num_filters, k, padding='same')
     return x
 
   def _residual_reduce_block(x, num_filters, k):
@@ -795,15 +753,15 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
     x = Add()([x, residual])
     return x
 
-  x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 30))(x)
-  x = _grouped_reduce_conv(x, 72, 3, 2, 40)
-  x = _grouped_context_conv(x, 72, 3, 3, 72)
-  x = _reduce_block(x, 144, 3, 72)
-  x = _reduce_block(x, 216, 3, 144)
-  x = _reduce_block(x, 288, 3, 216)
-  x = _reduce_block(x, 360, 3, 288)
-  x = _reduce_block(x, 432, 3, 360)
-  x = _reduce_block(x, 504, 3, 432)
+  x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
+  x = _reduce_conv(x, 64, 3)
+  x = _context_conv(x, 64, 3)
+  x = _reduce_block(x, 128, 3)
+  x = _reduce_block(x, 192, 3)
+  x = _reduce_block(x, 256, 3)
+  x = _reduce_block(x, 320, 3)
+  x = _reduce_block(x, 384, 3)
+  x = _reduce_block(x, 448, 3)
   x = GlobalAveragePooling1D()(x)
   x = Dropout(0.3)(x)
   x = Dense(num_classes, activation='softmax')(x)
@@ -811,7 +769,7 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
 
   model = Model(input_layer, x, name='conv_1d_time_sliced')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=1e-3),
+      optimizer=keras.optimizers.RMSprop(lr=5e-4),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model

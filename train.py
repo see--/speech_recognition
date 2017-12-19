@@ -84,8 +84,8 @@ if __name__ == '__main__':
           wanted_words=prepare_words_list(get_classes(wanted_only=True)),
           all_words=prepare_words_list(classes),
           label2int=ap.word_to_index),
-      TensorBoard(log_dir='logs_088'),
-      ModelCheckpoint('checkpoints_088/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5'),
+      TensorBoard(log_dir='logs_089'),
+      ModelCheckpoint('checkpoints_089/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5'),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=4, verbose=1)]
   model.fit_generator(
@@ -93,5 +93,5 @@ if __name__ == '__main__':
       epochs=200, verbose=1, callbacks=callbacks)
 
   eval_res = model.evaluate_generator(
-      val_gen, steps_per_epoch=ap.set_size('validation') // batch_size)
+      val_gen, ap.set_size('validation') // batch_size)
   print(eval_res)
