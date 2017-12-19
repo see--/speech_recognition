@@ -742,17 +742,6 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
     x = _context_conv(x, num_filters, k, padding='same')
     return x
 
-  def _residual_reduce_block(x, num_filters, k):
-    residual = Conv1D(num_filters, 1, strides=2, use_bias=False,
-                      padding='same')(x)
-    residual = BatchNormalization()(residual)
-
-    x = _reduce_conv(x, num_filters, k, padding='same')
-    x = _context_conv(x, num_filters, k, padding='same')
-
-    x = Add()([x, residual])
-    return x
-
   x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
   x = _reduce_conv(x, 64, 3)
   x = _context_conv(x, 64, 3)
@@ -762,14 +751,17 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
   x = _reduce_block(x, 320, 3)
   x = _reduce_block(x, 384, 3)
   x = _reduce_block(x, 448, 3)
+  x = _reduce_block(x, 512, 3)
   x = GlobalAveragePooling1D()(x)
   x = Dropout(0.3)(x)
-  x = Dense(num_classes, activation='softmax')(x)
-  x = Reshape([-1])(x)
+  x = Dense(256, use_bias=False)(x)
+  x = Activation(relu6)(x)
+  x = Dropout(0.1)(x)
+  x = Dense(num_classes, activation='softmax', use_bias=False)(x)
 
   model = Model(input_layer, x, name='conv_1d_time_sliced')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=1e-4),
+      optimizer=keras.optimizers.RMSprop(lr=5e-4),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model

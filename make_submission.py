@@ -6,12 +6,14 @@ from glob import glob
 import os
 import numpy as np
 import pandas as pd
+import cv2
 from tqdm import tqdm
 from keras.models import load_model
 from model import prepare_model_settings, relu6, overlapping_time_slice_stack
 from keras.applications.mobilenet import DepthwiseConv2D
 from input_data import prepare_words_list
 from classes import get_classes, get_int2label
+from utils import center_crop
 from IPython import embed  # noqa
 
 
@@ -37,13 +39,15 @@ if __name__ == '__main__':
   test_fns = sorted(glob('data/test/audio/*.wav'))
   sess = K.get_session()
   K.set_learning_phase(0)
+  sample_rate = 16000
   use_tta = True
   tta_volume = 1.3
+  tta_speed = 0.9  # slow down (i.e. < 1.0)
+  tta_len = int(sample_rate / tta_speed)
   wanted_only = False
   extend_reversed = False
   compute_mfcc = False
-  sample_rate = 16000
-  batch_size = 512
+  batch_size = 256
   wanted_words = prepare_words_list(get_classes(wanted_only=True))
   classes = get_classes(
       wanted_only=wanted_only, extend_reversed=extend_reversed)
@@ -95,9 +99,19 @@ if __name__ == '__main__':
       probs = model.predict(np.float32(X_batch))
       pred = probs.argmax(axis=-1)
       if use_tta:
+        tta_probs = probs.copy()
+        slow_data = cv2.resize(
+            np.float32(X_batch), (tta_len, len(X_batch)),
+            interpolation=cv2.INTER_NEAREST)
+        slow_data = center_crop(slow_data, desired_size=16000)
+        slow_probs = model.predict(np.float32(slow_data))
+        tta_probs += slow_probs
         loud_probs = model.predict(tta_volume * np.float32(X_batch))
         # average when not 'silence'
-        probs[pred != 0] = 0.5 * (probs[pred != 0] + loud_probs[pred != 0])
+        tta_probs[pred != 0] += loud_probs[pred != 0]
+        tta_probs[pred == 0] += probs[pred == 0]
+        tta_probs /= 3.0
+        probs = tta_probs
         pred = probs.argmax(axis=-1)
 
       probabilities.append(probs)
@@ -115,9 +129,19 @@ if __name__ == '__main__':
     probs = model.predict(np.float32(X_batch))
     pred = probs.argmax(axis=-1)
     if use_tta:
+      tta_probs = probs.copy()
+      slow_data = cv2.resize(
+          np.float32(X_batch), (tta_len, len(X_batch)),
+          interpolation=cv2.INTER_NEAREST)
+      slow_data = center_crop(slow_data, desired_size=16000)
+      slow_probs = model.predict(np.float32(slow_data))
+      tta_probs += slow_probs
       loud_probs = model.predict(tta_volume * np.float32(X_batch))
       # average when not 'silence'
-      probs[pred != 0] = 0.5 * (probs[pred != 0] + loud_probs[pred != 0])
+      tta_probs[pred != 0] += loud_probs[pred != 0]
+      tta_probs[pred == 0] += probs[pred == 0]
+      tta_probs /= 3.0
+      probs = tta_probs
       pred = probs.argmax(axis=-1)
 
     probabilities.append(probs)
@@ -129,15 +153,16 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_086_tta.csv', index=False, compression=None)
+      'submission_086_tta_c.csv', index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_086_tta_all_labels.csv', index=False, compression=None)
+      'submission_086_tta_c_all_labels.csv', index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
   all_data = pd.DataFrame({'fname': fns, 'label': labels})
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_086_tta_all_labels_probs.csv', index=False, compression=None)
+      'submission_086_tta_c_all_labels_probs.csv',
+      index=False, compression=None)
   print("Done!")
