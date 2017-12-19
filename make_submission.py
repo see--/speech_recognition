@@ -42,7 +42,7 @@ if __name__ == '__main__':
   sess = K.get_session()
   K.set_learning_phase(0)
   sample_rate = 16000
-  use_tta = True
+  use_tta = False
   wanted_only = False
   extend_reversed = False
   compute_mfcc = False
@@ -110,9 +110,7 @@ if __name__ == '__main__':
       pred = probs.argmax(axis=-1)
       if use_tta:
         tta_probs = model.predict(np.float32(X_tta_batch))
-        # average when not 'silence'
-        probs[pred != 0] = 0.5 * (
-            tta_probs[pred != 0] + probs[pred != 0])
+        probs = 0.5 * (probs + tta_probs)
         pred = probs.argmax(axis=-1)
 
       probabilities.append(probs)
@@ -133,8 +131,7 @@ if __name__ == '__main__':
       if use_tta:
         tta_probs = model.predict(np.float32(X_tta_batch))
         # average when not 'silence'
-        probs[pred != 0] = 0.5 * (
-            tta_probs[pred != 0] + probs[pred != 0])
+        probs = 0.5 * (probs + tta_probs)
         pred = probs.argmax(axis=-1)
 
     probabilities.append(probs)
@@ -146,16 +143,16 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_091_tta.csv', index=False, compression=None)
+      'submission_091.csv', index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_091_tta_all_labels.csv', index=False, compression=None)
+      'submission_091_all_labels.csv', index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
   all_data = pd.DataFrame({'fname': fns, 'label': labels})
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_091_tta_all_labels_probs.csv',
+      'submission_091_all_labels_probs.csv',
       index=False, compression=None)
   print("Done!")

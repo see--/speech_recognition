@@ -15,7 +15,7 @@ def data_gen(audio_processor, sess,
              background_frequency=0.5, background_volume_range=0.2,
              foreground_frequency=0.5, foreground_volume_range=0.2,
              time_shift=(100.0 * 16000.0) / 1000,
-             mode='validation', pseudo_frequency=0.5):
+             mode='validation', pseudo_frequency=0.4):
   offset = 0
   if mode != 'training':
     background_frequency = 0.0
@@ -86,8 +86,8 @@ if __name__ == '__main__':
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=4, verbose=1),
-      TensorBoard(log_dir='logs_092'),
-      ModelCheckpoint('checkpoints_092/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
+      TensorBoard(log_dir='logs_093'),
+      ModelCheckpoint('checkpoints_093/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
   model.fit_generator(
       train_gen, steps_per_epoch=ap.set_size('training') // batch_size,
       epochs=200, verbose=1, callbacks=callbacks)
