@@ -7,7 +7,6 @@ from os.path import join as jp, basename as bn
 
 
 def main():
-  tta_volume = 1.3
   tta_speed = 0.9  # slow down (i.e. < 1.0)
   sample_per_sec = 16000
   test_fns = sorted(glob('data/test/audio/*.wav'))
@@ -19,7 +18,6 @@ def main():
     data = np.float32(data) / 32767
     data = effects.time_stretch(data, tta_speed)
     data = data[-sample_per_sec:]
-    data = tta_volume * data
     out_fn = jp(tta_dir, basename)
     wf.write(out_fn, rate, np.int16(data * 32767))
 

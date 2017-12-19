@@ -754,10 +754,10 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
   x = _reduce_block(x, 512, 3)
   x = GlobalAveragePooling1D()(x)
   x = Dropout(0.3)(x)
-  x = Dense(256, use_bias=False)(x)
+  x = Dense(256)(x)
   x = Activation(relu6)(x)
-  x = Dropout(0.1)(x)
-  x = Dense(num_classes, activation='softmax', use_bias=False)(x)
+  x = Dropout(0.3)(x)
+  x = Dense(num_classes, activation='softmax')(x)
 
   model = Model(input_layer, x, name='conv_1d_time_sliced')
   model.compile(

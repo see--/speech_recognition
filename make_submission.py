@@ -37,13 +37,12 @@ def map_to_wanted(labels, wanted_words):
 
 if __name__ == '__main__':
   test_fns = sorted(glob('data/test/audio/*.wav'))
+  tta_fns = sorted(glob('data/tta_test/audio/*.wav'))
+  assert len(test_fns) == len(tta_fns)
   sess = K.get_session()
   K.set_learning_phase(0)
   sample_rate = 16000
   use_tta = True
-  tta_volume = 1.3
-  tta_speed = 0.9  # slow down (i.e. < 1.0)
-  tta_len = int(sample_rate / tta_speed)
   wanted_only = False
   extend_reversed = False
   compute_mfcc = False
@@ -73,7 +72,7 @@ if __name__ == '__main__':
       spectrogram,
       wav_decoder.sample_rate,
       dct_coefficient_count=model_settings['dct_coefficient_count'])
-  model = load_model('checkpoints_086/ep-110-vl-0.1935.hdf5',
+  model = load_model('checkpoints_091/ep-075-vl-0.2101.hdf5',
                      custom_objects={'relu6': relu6,
                                      'DepthwiseConv2D': DepthwiseConv2D,
                                      'overlapping_time_slice_stack':
@@ -85,7 +84,9 @@ if __name__ == '__main__':
   fns, wanted_labels, labels, probabilities = [], [], [], []
   batch_counter = 0
   X_batch = []
-  for test_fn in tqdm(test_fns[:]):
+  X_tta_batch = []
+  for i in tqdm(range(len(test_fns[:]))):
+    test_fn = test_fns[i]
     fns.append(os.path.basename(test_fn))
     if compute_mfcc:
       mfcc_val = sess.run(mfcc, {wav_filename_placeholder: test_fn})
@@ -93,25 +94,25 @@ if __name__ == '__main__':
     else:
       raw_val = sess.run(clamped, {wav_filename_placeholder: test_fn})
       X_batch.append(raw_val.flatten())
+    if use_tta:
+      tta_fn = tta_fns[i]
+      assert os.path.basename(tta_fn) == os.path.basename(test_fn)
+      if compute_mfcc:
+        mfcc_val = sess.run(mfcc, {wav_filename_placeholder: tta_fn})
+        X_tta_batch.append(mfcc_val.flatten())
+      else:
+        raw_val = sess.run(clamped, {wav_filename_placeholder: tta_fn})
+        X_tta_batch.append(raw_val.flatten())
 
     batch_counter += 1
     if batch_counter == batch_size:
       probs = model.predict(np.float32(X_batch))
       pred = probs.argmax(axis=-1)
       if use_tta:
-        tta_probs = probs.copy()
-        slow_data = cv2.resize(
-            np.float32(X_batch), (tta_len, len(X_batch)),
-            interpolation=cv2.INTER_NEAREST)
-        slow_data = center_crop(slow_data, desired_size=16000)
-        slow_probs = model.predict(np.float32(slow_data))
-        tta_probs += slow_probs
-        loud_probs = model.predict(tta_volume * np.float32(X_batch))
+        tta_probs = model.predict(np.float32(X_tta_batch))
         # average when not 'silence'
-        tta_probs[pred != 0] += loud_probs[pred != 0]
-        tta_probs[pred == 0] += probs[pred == 0]
-        tta_probs /= 3.0
-        probs = tta_probs
+        probs[pred != 0] = 0.5 * (
+            tta_probs[pred != 0] + probs[pred != 0])
         pred = probs.argmax(axis=-1)
 
       probabilities.append(probs)
@@ -122,27 +123,19 @@ if __name__ == '__main__':
       pred_labels = map_to_wanted(pred_labels, wanted_words)
       wanted_labels.extend(pred_labels)
       # set back counter
-      batch_counter, X_batch = 0, []
+      batch_counter, X_batch, X_tta_batch = 0, [], []
 
   # process remaining
   if X_batch:
     probs = model.predict(np.float32(X_batch))
     pred = probs.argmax(axis=-1)
     if use_tta:
-      tta_probs = probs.copy()
-      slow_data = cv2.resize(
-          np.float32(X_batch), (tta_len, len(X_batch)),
-          interpolation=cv2.INTER_NEAREST)
-      slow_data = center_crop(slow_data, desired_size=16000)
-      slow_probs = model.predict(np.float32(slow_data))
-      tta_probs += slow_probs
-      loud_probs = model.predict(tta_volume * np.float32(X_batch))
-      # average when not 'silence'
-      tta_probs[pred != 0] += loud_probs[pred != 0]
-      tta_probs[pred == 0] += probs[pred == 0]
-      tta_probs /= 3.0
-      probs = tta_probs
-      pred = probs.argmax(axis=-1)
+      if use_tta:
+        tta_probs = model.predict(np.float32(X_tta_batch))
+        # average when not 'silence'
+        probs[pred != 0] = 0.5 * (
+            tta_probs[pred != 0] + probs[pred != 0])
+        pred = probs.argmax(axis=-1)
 
     probabilities.append(probs)
     pred_labels = [int2label[int(p)] for p in pred]
@@ -153,16 +146,16 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_086_tta_c.csv', index=False, compression=None)
+      'submission_091_tta.csv', index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_086_tta_c_all_labels.csv', index=False, compression=None)
+      'submission_091_tta_all_labels.csv', index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
   all_data = pd.DataFrame({'fname': fns, 'label': labels})
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_086_tta_c_all_labels_probs.csv',
+      'submission_091_tta_all_labels_probs.csv',
       index=False, compression=None)
   print("Done!")
