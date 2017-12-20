@@ -14,7 +14,7 @@ def data_gen(audio_processor, sess,
              batch_size=128,
              background_frequency=0.5, background_volume_range=0.2,
              foreground_frequency=0.5, foreground_volume_range=0.2,
-             time_shift=(100.0 * 16000.0) / 1000,
+             time_shift_frequency=0.8, time_shift_range=[-2000, 0],
              mode='validation', pseudo_frequency=0.4):
   offset = 0
   if mode != 'training':
@@ -23,7 +23,8 @@ def data_gen(audio_processor, sess,
     foreground_frequency = 0.0
     foreground_volume_range = 0.0
     pseudo_frequency = 0.0
-    time_shift = 0
+    time_shift_frequency = 0.0
+    time_shift_range = [0, 0]
   while True:
     X, y = audio_processor.get_data(
         how_many=batch_size, offset=0 if mode == 'training' else offset,
@@ -31,7 +32,9 @@ def data_gen(audio_processor, sess,
         background_volume_range=background_volume_range,
         foreground_frequency=foreground_frequency,
         foreground_volume_range=foreground_volume_range,
-        time_shift=time_shift, mode=mode, sess=sess,
+        time_shift_frequency=time_shift_frequency,
+        time_shift_range=time_shift_range,
+        mode=mode, sess=sess,
         pseudo_frequency=pseudo_frequency)
     offset += batch_size
     if offset > ap.set_size(mode) - batch_size:
@@ -73,6 +76,7 @@ if __name__ == '__main__':
       output_representation=output_representation)
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training')
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation')
+  embed()
   model = speech_model(
       'conv_1d_time_sliced',
       model_settings['fingerprint_size'] if output_representation == 'mfcc' else sample_rate,  # noqa
@@ -86,8 +90,8 @@ if __name__ == '__main__':
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=4, verbose=1),
-      TensorBoard(log_dir='logs_094'),
-      ModelCheckpoint('checkpoints_094/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
+      TensorBoard(log_dir='logs_096'),
+      ModelCheckpoint('checkpoints_096/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
   model.fit_generator(
       train_gen, steps_per_epoch=ap.set_size('training') // batch_size,
       epochs=200, verbose=1, callbacks=callbacks)

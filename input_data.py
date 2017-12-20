@@ -25,10 +25,8 @@ import os.path
 import random
 import re
 import sys
-import tarfile
 
 import numpy as np
-from six.moves import urllib
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
@@ -65,8 +63,9 @@ def which_set(filename, validation_percentage, testing_percentage):
   if new ones are added over time. This makes it less likely that testing
   samples will accidentally be reused in training when long runs are restarted
   for example. To keep this stability, a hash of the filename is taken and used
-  to determine which set it should belong to. This determination only depends on
-  the name and the set proportions, so it won't change as other files are added.
+  to determine which set it should belong to. This determination only depends
+  on the name and the set proportions, so it won't change as other files are
+  added.
 
   It's also useful to associate particular files as related (for example words
   spoken by the same person), so anything after '_nohash_' in a filename is
@@ -79,7 +78,7 @@ def which_set(filename, validation_percentage, testing_percentage):
     testing_percentage: How much of the data set to use for testing.
 
   Returns:
-    String, one of 'training', 'validation', or 'testing'.
+    String, one of 'training', 'validation', 'testing' or 'pseudo'.
   """
   base_name = os.path.basename(filename)
   # We want to ignore anything after '_nohash_' in the file name when
@@ -315,8 +314,7 @@ class AudioProcessor(object):
 
       - wav_filename_placeholder_: Filename of the WAV to load.
       - foreground_volume_placeholder_: How loud the main clip should be.
-      - time_shift_padding_placeholder_: Where to pad the clip.
-      - time_shift_offset_placeholder_: How much to move the clip in time.
+      - time_shift_placeholder_: How much the clip is shifted.
       - background_data_placeholder_: PCM sample data for background noise.
       - background_volume_placeholder_: Loudness of mixed-in background.
       - mfcc_: Output 2D fingerprint of processed audio.
@@ -334,22 +332,36 @@ class AudioProcessor(object):
     scaled_foreground = tf.multiply(wav_decoder.audio,
                                     self.foreground_volume_placeholder_)
     # Shift the sample's start position, and pad any gaps with zeros.
-    self.time_shift_padding_placeholder_ = tf.placeholder(tf.int32, [2, 2])
-    self.time_shift_offset_placeholder_ = tf.placeholder(tf.int32, [2])
-    padded_foreground = tf.pad(
-        scaled_foreground,
-        self.time_shift_padding_placeholder_,
-        mode='CONSTANT')
-    sliced_foreground = tf.slice(padded_foreground,
-                                 self.time_shift_offset_placeholder_,
-                                 [desired_samples, -1])
+    self.time_shift_placeholder_ = tf.placeholder(tf.int32)
+
+    def roll(a, shift, a_len=16000):
+      # https://stackoverflow.com/questions/42651714/vector-shift-roll-in-tensorflow
+      def roll_left(a, shift, a_len):
+        shift %= a_len
+        rolled = tf.concat(
+            [a[a_len - shift:, :], a[:a_len - shift, :]], axis=0)
+        return rolled
+
+      def roll_right(a, shift, a_len):
+        shift = -shift
+        shift %= a_len
+        rolled = tf.concat([a[shift:, :], a[:shift, :]], axis=0)
+        return rolled
+      # https://stackoverflow.com/questions/35833011/how-to-add-if-condition-in-a-tensorflow-graph
+      return tf.cond(
+          tf.greater_equal(shift, 0),
+          true_fn=lambda: roll_left(a, shift, a_len),
+          false_fn=lambda: roll_right(a, shift, a_len))
+
+    shifted_foreground = roll(scaled_foreground, self.time_shift_placeholder_)
+
     # Mix in background noise.
     self.background_data_placeholder_ = tf.placeholder(tf.float32,
                                                        [desired_samples, 1])
     self.background_volume_placeholder_ = tf.placeholder(tf.float32, [])
     background_mul = tf.multiply(self.background_data_placeholder_,
                                  self.background_volume_placeholder_)
-    background_add = tf.add(background_mul, sliced_foreground)
+    background_add = tf.add(background_mul, shifted_foreground)
     self.background_clamp_ = tf.clip_by_value(background_add, -1.0, 1.0)
     # Run the spectrogram and MFCC ops to get a 2D 'fingerprint' of the audio.
     self.spectrogram_ = contrib_audio.audio_spectrogram(
@@ -377,12 +389,14 @@ class AudioProcessor(object):
   def get_data(self, how_many, offset,
                background_frequency, background_volume_range,
                foreground_frequency, foreground_volume_range,
-               time_shift, mode, sess, pseudo_frequency=0.0):
+               time_shift_frequency, time_shift_range,
+               mode, sess, pseudo_frequency=0.0):
     """Gather samples from the data set, applying transformations as needed.
 
-    When the mode is 'training', a random selection of samples will be returned,
-    otherwise the first N clips in the partition will be used. This ensures that
-    validation always uses the same samples, reducing noise in the metrics.
+    When the mode is 'training', a random selection of samples will be
+    returned, otherwise the first N clips in the partition will be used.
+    This ensures that validation always uses the same samples, reducing
+    noise in the metrics.
 
     Args:
       how_many: Desired number of samples to return. -1 means the entire
@@ -391,7 +405,10 @@ class AudioProcessor(object):
       background_frequency: How many clips will have background noise, 0.0 to
         1.0.
       background_volume_range: How loud the background noise will be.
-      time_shift: How much to randomly shift the clips by in time.
+      time_shift_frequency: How often do we shift the
+                            samples (float: 0.0 to 1.0)
+      time_shift_range: How much to randomly shift the clips by in time.
+                        [min_shift, max_shift]
       mode: Which partition to use, must be 'training', 'validation',
         'testing' or 'pseudo'.
       sess: TensorFlow session that was active when processor was created.
@@ -438,20 +455,14 @@ class AudioProcessor(object):
           sample = candidates[sample_index]
 
       # If we're time shifting, set up the offset for this sample.
-      if time_shift > 0:
-        time_shift_amount = np.random.randint(-time_shift, time_shift)
+      if np.random.uniform(0.0, 1.0) < time_shift_frequency:
+        time_shift = np.random.randint(
+            time_shift_range[0], time_shift_range[1] + 1)
       else:
-        time_shift_amount = 0
-      if time_shift_amount > 0:
-        time_shift_padding = [[time_shift_amount, 0], [0, 0]]
-        time_shift_offset = [0, 0]
-      else:
-        time_shift_padding = [[0, -time_shift_amount], [0, 0]]
-        time_shift_offset = [-time_shift_amount, 0]
+        time_shift = 0
       input_dict = {
           self.wav_filename_placeholder_: sample['file'],
-          self.time_shift_padding_placeholder_: time_shift_padding,
-          self.time_shift_offset_placeholder_: time_shift_offset,
+          self.time_shift_placeholder_: time_shift,
       }
       # Choose a section of background noise to mix in.
       if use_background:
