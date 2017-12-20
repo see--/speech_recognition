@@ -742,9 +742,9 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
     x = _context_conv(x, num_filters, k, padding='valid')
     return x
 
-  x = Lambda(lambda x: overlapping_time_slice_stack(x, 10, 8))(x)
-  x = _reduce_conv(x, 64, 3)
-  x = _context_conv(x, 64, 3)
+  x = Lambda(lambda x: overlapping_time_slice_stack(x, 4, 4))(x)
+  x = _reduce_block(x, 32, 3)
+  x = _reduce_block(x, 64, 3)
   x = _reduce_block(x, 96, 3)
   x = _reduce_block(x, 128, 3)
   x = _reduce_block(x, 160, 3)
