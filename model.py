@@ -753,7 +753,7 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
   x = _reduce_block(x, 384, 3)
   x = _reduce_block(x, 448, 3)
   x = GlobalAveragePooling1D()(x)
-  x = Dropout(0.2)(x)
+  x = Dropout(0.4)(x)
   x = Dense(224)(x)
   x = Activation(relu6)(x)
   x = Dropout(0.2)(x)

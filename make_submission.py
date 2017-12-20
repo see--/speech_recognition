@@ -75,7 +75,7 @@ if __name__ == '__main__':
       spectrogram,
       wav_decoder.sample_rate,
       dct_coefficient_count=model_settings['dct_coefficient_count'])
-  model = load_model('checkpoints_091/ep-056-vl-0.2121.hdf5',
+  model = load_model('checkpoints_094/ep-050-vl-0.2010.hdf5',
                      custom_objects={'relu6': relu6,
                                      'DepthwiseConv2D': DepthwiseConv2D,
                                      'overlapping_time_slice_stack':
@@ -148,10 +148,10 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_091_leftloud_tta.csv', index=False, compression=None)
+      'submission_094_leftloud_tta.csv', index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_091_leftloud_tta_all_labels.csv',
+      'submission_094_leftloud_tta_all_labels.csv',
       index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
@@ -159,6 +159,6 @@ if __name__ == '__main__':
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_091_leftloud_tta_all_labels_probs.csv',
+      'submission_094_leftloud_tta_all_labels_probs.csv',
       index=False, compression=None)
   print("Done!")
