@@ -62,7 +62,7 @@ if __name__ == '__main__':
     data_dirs.append('data/pseudo/audio')
   output_representation = 'raw'
   sample_rate = 16000
-  batch_size = 256
+  batch_size = 384
   classes = get_classes(wanted_only=False, extend_reversed=False)
   model_settings = prepare_model_settings(
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
@@ -80,7 +80,7 @@ if __name__ == '__main__':
       'conv_1d_time_sliced',
       model_settings['fingerprint_size'] if output_representation == 'mfcc' else sample_rate,  # noqa
       num_classes=model_settings['label_count'])
-  # embed()
+  embed()
   callbacks = [
       ConfusionMatrixCallback(
           val_gen, ap.set_size('validation') // batch_size,
@@ -89,8 +89,8 @@ if __name__ == '__main__':
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=4, verbose=1),
-      TensorBoard(log_dir='logs_098'),
-      ModelCheckpoint('checkpoints_098/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
+      TensorBoard(log_dir='logs_099'),
+      ModelCheckpoint('checkpoints_099/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
   model.fit_generator(
       train_gen, steps_per_epoch=ap.set_size('training') // batch_size,
       epochs=200, verbose=1, callbacks=callbacks)
