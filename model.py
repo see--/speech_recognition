@@ -739,25 +739,25 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
 
   def _reduce_block(x, num_filters, k):
     x = _reduce_conv(x, num_filters, k, padding='same')
-    x = _context_conv(x, num_filters, k, padding='valid')
+    x = _context_conv(x, num_filters, k, padding='same')
     return x
 
-  x = Lambda(lambda x: overlapping_time_slice_stack(x, 4, 4))(x)
-  x = _reduce_block(x, 32, 3)
-  x = _reduce_block(x, 64, 3)
-  x = _reduce_block(x, 96, 3)
+  x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
+  x = _reduce_conv(x, 64, 3)
+  x = _context_conv(x, 64, 3)
   x = _reduce_block(x, 128, 3)
-  x = _reduce_block(x, 160, 3)
+  x = _reduce_block(x, 192, 3)
   x = _reduce_block(x, 256, 3)
   x = _reduce_block(x, 320, 3)
   x = _reduce_block(x, 384, 3)
   x = _reduce_block(x, 448, 3)
+  x = _reduce_block(x, 512, 3)
   x = GlobalAveragePooling1D()(x)
   x = Dropout(0.4)(x)
-  x = Dense(224)(x)
+  x = Dense(256, use_bias=False)(x)
   x = Activation(relu6)(x)
   x = Dropout(0.2)(x)
-  x = Dense(num_classes, activation='softmax')(x)
+  x = Dense(num_classes, activation='softmax', use_bias=False)(x)
 
   model = Model(input_layer, x, name='conv_1d_time_sliced')
   model.compile(

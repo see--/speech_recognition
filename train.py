@@ -53,7 +53,7 @@ def data_gen(audio_processor, sess,
 # 64727 training files
 if __name__ == '__main__':
   # restrict gpu usage: https://stackoverflow.com/questions/34199233/how-to-prevent-tensorflow-from-allocating-the-totality-of-a-gpu-memory  # noqa
-  gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.95)
+  gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.90)
   sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
   K.set_session(sess)
   data_dirs = ['data/train/audio']
@@ -62,7 +62,7 @@ if __name__ == '__main__':
     data_dirs.append('data/pseudo/audio')
   output_representation = 'raw'
   sample_rate = 16000
-  batch_size = 448
+  batch_size = 256
   classes = get_classes(wanted_only=False, extend_reversed=False)
   model_settings = prepare_model_settings(
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
@@ -89,8 +89,8 @@ if __name__ == '__main__':
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=4, verbose=1),
-      TensorBoard(log_dir='logs_097'),
-      ModelCheckpoint('checkpoints_097/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
+      TensorBoard(log_dir='logs_098'),
+      ModelCheckpoint('checkpoints_098/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
   model.fit_generator(
       train_gen, steps_per_epoch=ap.set_size('training') // batch_size,
       epochs=200, verbose=1, callbacks=callbacks)
