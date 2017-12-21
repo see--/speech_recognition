@@ -743,14 +743,12 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11):
     return x
 
   x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
-  # stem
+  # default conv
   x = Conv1D(32, 3, strides=2, use_bias=False, name='repr_conv')(x)
   x = BatchNormalization()(x)
   x = Activation(relu6)(x)
-  x = Conv1D(64, 3, use_bias=False)(x)
-  x = BatchNormalization()(x)
-  x = Activation(relu6)(x)
   # depthwise conv
+  x = _context_conv(x, 64, 3)
   x = _reduce_block(x, 128, 3)
   x = _reduce_block(x, 192, 3)
   x = _reduce_block(x, 256, 3)
