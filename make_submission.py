@@ -42,14 +42,14 @@ if __name__ == '__main__':
   sess = K.get_session()
   K.set_learning_phase(0)
   sample_rate = 16000
-  use_tta = False
+  use_tta = True
   use_speed_tta = False
   tta_volume = 1.2
-  tta_shift = 500
+  tta_shift = 1500
   wanted_only = False
   extend_reversed = False
   compute_mfcc = False
-  batch_size = 256
+  batch_size = 384
   wanted_words = prepare_words_list(get_classes(wanted_only=True))
   classes = get_classes(
       wanted_only=wanted_only, extend_reversed=extend_reversed)
@@ -148,10 +148,10 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_102.csv', index=False, compression=None)
+      'submission_102_tta_leftloud.csv', index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_102_all_labels.csv',
+      'submission_102_tta_leftloud_all_labels.csv',
       index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
@@ -159,6 +159,6 @@ if __name__ == '__main__':
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_102_all_labels_probs.csv',
+      'submission_102_tta_leftloud_all_labels_probs.csv',
       index=False, compression=None)
   print("Done!")

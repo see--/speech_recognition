@@ -3,7 +3,7 @@ from keras import backend as K
 from keras.layers import Dense, Input, Lambda, Conv1D, AveragePooling1D
 from keras.layers import Reshape, Flatten, Add
 from keras.layers import Conv2D, MaxPool2D, MaxPool1D, ZeroPadding1D
-from keras.layers import BatchNormalization, Activation
+from keras.layers import BatchNormalization, Activation, Multiply
 from keras.layers import GlobalAveragePooling2D, MaxPool1D
 from keras.layers import Dropout, Add, GlobalAveragePooling1D
 from keras.layers import LSTM, GRU, Bidirectional
@@ -818,27 +818,102 @@ def conv_1d_residual_model(input_size=16000, num_classes=11, filter_mult=1):
   x = PreprocessRaw(x)
   x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
   # default conv
-  x = Conv1D(32 * filter_mult, 3, strides=2, use_bias=False,
+  x = Conv1D(64 * filter_mult, 3, strides=2, use_bias=False,
              kernel_regularizer=l2(1e-5))(x)
   x = BatchNormalization()(x)
   x = Activation(relu6)(x)
   # depthwise conv
-  x = _residual_block(x, 64 * filter_mult, 3, strides=2)  # 400
   x = _residual_block(x, 128 * filter_mult, 3, strides=2)  # 200
-  x = _residual_block(x, 384 * filter_mult, 3, strides=2)  # 100
-  for i in range(12):
-    x = _residual_block(x, 384 * filter_mult, 3)
+  x = _residual_block(x, 256 * filter_mult, 3, strides=2)  # 100
+  for i in range(8):
+    x = _residual_block(x, 256 * filter_mult, 3)
   x = _residual_block(x, 512 * filter_mult, 3, strides=2)
+  x = _residual_block(x, 728 * filter_mult, 3, strides=2)
   x = _residual_block(x, 728 * filter_mult, 3, strides=2)
   x = _reduce_block(x, 1024 * filter_mult, 3)
   x = GlobalAveragePooling1D()(x)
-  x = Dropout(0.4)(x)
+  x = Dropout(0.5)(x)
   x = Dense(num_classes, activation='softmax',
             kernel_regularizer=l2(1e-5))(x)
 
   model = Model(input_layer, x, name='conv_1d_residual')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=1e-3),
+      optimizer=keras.optimizers.RMSprop(lr=1e-4),
+      loss=keras.losses.categorical_crossentropy,
+      metrics=[keras.metrics.categorical_accuracy])
+  return model
+
+
+def xception_with_attention_model(input_size=16000, num_classes=11, filter_mult=1):
+  """ Creates a 1D model for temporal data. Note: Use only
+  with compute_mfcc = False (e.g. raw waveform data).
+  Args:
+    input_size: How big the input vector is.
+    num_classes: How many classes are to be recognized.
+  Returns:
+    Compiled keras model
+  """
+  def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding=padding, use_bias=False, strides=strides)
+    return x
+
+  def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding=padding, dilation_rate=dilation_rate,
+        use_bias=False)
+    return x
+
+  def _reduce_block(x, num_filters, k):
+    x = _reduce_conv(x, num_filters, k, padding='same')
+    x = _context_conv(x, num_filters, k, padding='valid')
+    return x
+
+  def _residual_block(x, num_filters, k, strides=1, padding='same'):
+    if strides != 1:
+      residual = Conv1D(
+          num_filters, 1, strides=strides, padding='same', use_bias=False)(x)
+      residual = BatchNormalization()(residual)
+    else:
+      residual = x
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding='same', use_bias=False)
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding='same', use_bias=False)
+    x = MaxPool1D(pool_size=3, strides=strides, padding='same')(x)
+    return Add()([x, residual])
+
+  input_layer = Input(shape=[input_size])
+  x = input_layer
+  x = PreprocessRaw(x)
+  x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
+  # default conv
+  x = Conv1D(64 * filter_mult, 3, strides=2, use_bias=False,
+             kernel_regularizer=l2(1e-5))(x)
+  x = BatchNormalization()(x)
+  x = Activation(relu6)(x)
+  # depthwise conv
+  x = _residual_block(x, 128 * filter_mult, 3, strides=2)  # 200
+  x = _residual_block(x, 256 * filter_mult, 3, strides=2)  # 100
+  for i in range(8):
+    x = _residual_block(x, 256 * filter_mult, 3)
+  x = _residual_block(x, 384 * filter_mult, 3, strides=2)
+  x = _residual_block(x, 512 * filter_mult, 3, strides=2)
+  x = _residual_block(x, 728 * filter_mult, 3, strides=2)
+
+  # attention
+  # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
+  attention = Conv1D(1, 1, activation='softmax', use_bias=False,
+                     kernel_regularizer=l2(1e-5))(x)
+  x = Multiply()([x, attention])
+  x = GlobalAveragePooling1D()(x)
+  x = Dropout(0.5)(x)
+  x = Dense(num_classes, activation='softmax',
+            kernel_regularizer=l2(1e-5))(x)
+
+  model = Model(input_layer, x, name='xception_with_attention')
+  model.compile(
+      optimizer=keras.optimizers.RMSprop(lr=1e-4),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
@@ -1297,6 +1372,8 @@ def speech_model(model_type, input_size, num_classes=11):
     return conv_1d_top_down_model(input_size, num_classes)
   elif model_type == 'conv_1d_residual':
     return conv_1d_residual_model(input_size, num_classes)
+  elif model_type == 'xception_with_attention':
+    return xception_with_attention_model(input_size, num_classes)
   else:
     raise ValueError("Invalid model: %s" % model_type)
 
