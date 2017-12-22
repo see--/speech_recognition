@@ -38,17 +38,19 @@ def relu6(x):
 def _depthwise_conv_block(
         x, num_filter, k, padding='same', use_bias=False,
         dilation_rate=1, intermediate_activation=False,
-        strides=1):
+        strides=1, l2_reg=1e-5):
   # TODO(fchollet): Implement DepthwiseConv1D
   x = Lambda(lambda x: K.expand_dims(x, 1))(x)
   x = DepthwiseConv2D(
       (1, k), padding=padding, use_bias=use_bias,
-      dilation_rate=dilation_rate, strides=strides)(x)
+      dilation_rate=dilation_rate, strides=strides,
+      kernel_regularizer=l2(l2_reg))(x)
   x = Lambda(lambda x: K.squeeze(x, 1))(x)
   if intermediate_activation:
     x = BatchNormalization()(x)
     x = Activation(relu6)(x)
-  x = Conv1D(num_filter, 1, use_bias=use_bias)(x)
+  x = Conv1D(num_filter, 1, use_bias=use_bias,
+             kernel_regularizer=l2(l2_reg))(x)
   x = BatchNormalization()(x)
   x = Activation(relu6)(x)
   return x
@@ -744,7 +746,8 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11, filter_mult=1):
 
   x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
   # default conv
-  x = Conv1D(32 * filter_mult, 3, strides=2, use_bias=False)(x)
+  x = Conv1D(32 * filter_mult, 3, strides=2, use_bias=False,
+             kernel_regularizer=l2(1e-5))(x)
   x = BatchNormalization()(x)
   x = Activation(relu6)(x)
   # depthwise conv
@@ -760,7 +763,8 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11, filter_mult=1):
   x = Dense(256 * filter_mult, use_bias=False)(x)
   x = Activation(relu6)(x)
   x = Dropout(0.3)(x)
-  x = Dense(num_classes, activation='softmax', use_bias=False)(x)
+  x = Dense(num_classes, activation='softmax', use_bias=False,
+            kernel_regularizer=l2(1e-5))(x)
 
   model = Model(input_layer, x, name='conv_1d_time_sliced')
   model.compile(
@@ -779,10 +783,6 @@ def conv_1d_residual_model(input_size=16000, num_classes=11, filter_mult=1):
   Returns:
     Compiled keras model
   """
-  input_layer = Input(shape=[input_size])
-  x = input_layer
-  x = PreprocessRaw(x)
-
   def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
     x = _depthwise_conv_block(
         x, num_filters, k, padding=padding, use_bias=False, strides=strides)
@@ -813,9 +813,13 @@ def conv_1d_residual_model(input_size=16000, num_classes=11, filter_mult=1):
     x = MaxPool1D(pool_size=3, strides=strides, padding='same')(x)
     return Add()([x, residual])
 
+  input_layer = Input(shape=[input_size])
+  x = input_layer
+  x = PreprocessRaw(x)
   x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
   # default conv
-  x = Conv1D(32 * filter_mult, 3, strides=2, use_bias=False)(x)
+  x = Conv1D(32 * filter_mult, 3, strides=2, use_bias=False,
+             kernel_regularizer=l2(1e-5))(x)
   x = BatchNormalization()(x)
   x = Activation(relu6)(x)
   # depthwise conv
@@ -829,7 +833,8 @@ def conv_1d_residual_model(input_size=16000, num_classes=11, filter_mult=1):
   x = _reduce_block(x, 1024 * filter_mult, 3)
   x = GlobalAveragePooling1D()(x)
   x = Dropout(0.4)(x)
-  x = Dense(num_classes, activation='softmax')(x)
+  x = Dense(num_classes, activation='softmax',
+            kernel_regularizer=l2(1e-5))(x)
 
   model = Model(input_layer, x, name='conv_1d_residual')
   model.compile(
