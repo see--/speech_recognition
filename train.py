@@ -77,10 +77,10 @@ if __name__ == '__main__':
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training')
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation')
   model = speech_model(
-      'conv_1d_time_sliced',
+      'conv_1d_residual',
       model_settings['fingerprint_size'] if output_representation == 'mfcc' else sample_rate,  # noqa
       num_classes=model_settings['label_count'])
-  # embed()
+  embed()
   callbacks = [
       ConfusionMatrixCallback(
           val_gen, ap.set_size('validation') // batch_size,
@@ -89,8 +89,8 @@ if __name__ == '__main__':
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=4, verbose=1),
-      TensorBoard(log_dir='logs_101'),
-      ModelCheckpoint('checkpoints_101/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
+      TensorBoard(log_dir='logs_102'),
+      ModelCheckpoint('checkpoints_102/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
   model.fit_generator(
       train_gen, steps_per_epoch=ap.set_size('training') // batch_size,
       epochs=200, verbose=1, callbacks=callbacks)
