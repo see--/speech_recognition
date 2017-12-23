@@ -958,7 +958,7 @@ def xception_with_attention_model(input_size=16000, num_classes=11, filter_mult=
   # depthwise conv
   x = _residual_block(x, 128 * filter_mult, 3, strides=2)  # 200
   x = _residual_block(x, 256 * filter_mult, 3, strides=2)  # 100
-  for i in range(8):
+  for i in range(4):
     x = _residual_block(x, 256 * filter_mult, 3)
   x = _residual_block(x, 384 * filter_mult, 3, strides=2)
   x = _residual_block(x, 512 * filter_mult, 3, strides=2)
