@@ -43,7 +43,7 @@ if __name__ == '__main__':
   K.set_learning_phase(0)
   sample_rate = 16000
   use_tta = True
-  use_speed_tta = False
+  use_speed_tta = True
   tta_volume = 1.2
   tta_shift = 1500
   wanted_only = False
@@ -75,7 +75,7 @@ if __name__ == '__main__':
       spectrogram,
       wav_decoder.sample_rate,
       dct_coefficient_count=model_settings['dct_coefficient_count'])
-  model = load_model('checkpoints_102/ep-039-vl-0.1755.hdf5',
+  model = load_model('checkpoints_106/ep-062-vl-0.1815.hdf5',
                      custom_objects={'relu6': relu6,
                                      'DepthwiseConv2D': DepthwiseConv2D,
                                      'overlapping_time_slice_stack':
@@ -115,7 +115,8 @@ if __name__ == '__main__':
         X_batch_left = np.roll(X_batch_left, -tta_shift, axis=1)
         left_probs = model.predict(X_batch_left)
         loud_probs = model.predict(tta_volume * np.float32(X_batch))
-        probs = (probs + loud_probs + left_probs) / 3
+        slow_probs = model.predict(np.float32(X_tta_batch))
+        probs = (probs + loud_probs + left_probs + slow_probs) / 4
 
       pred = probs.argmax(axis=-1)
       probabilities.append(probs)
@@ -136,7 +137,8 @@ if __name__ == '__main__':
       X_batch_left = np.roll(X_batch_left, -tta_shift, axis=1)
       left_probs = model.predict(X_batch_left)
       loud_probs = model.predict(tta_volume * np.float32(X_batch))
-      probs = (probs + loud_probs + left_probs) / 3
+      slow_probs = model.predict(np.float32(X_tta_batch))
+      probs = (probs + loud_probs + left_probs + slow_probs) / 4
 
     pred = probs.argmax(axis=-1)
     probabilities.append(probs)
@@ -148,10 +150,10 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_102_tta_leftloud.csv', index=False, compression=None)
+      'submission_106_tta_leftloudslow.csv', index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_102_tta_leftloud_all_labels.csv',
+      'submission_106_tta_leftloudslow_all_labels.csv',
       index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
@@ -159,6 +161,6 @@ if __name__ == '__main__':
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_102_tta_leftloud_all_labels_probs.csv',
+      'submission_106_tta_leftloudslow_all_labels_probs.csv',
       index=False, compression=None)
   print("Done!")

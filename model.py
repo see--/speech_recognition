@@ -817,15 +817,17 @@ def conv_1d_time_sliced_with_attention_model(
   x = _reduce_block(x, 320 * filter_mult, 3)
   x = _reduce_block(x, 384 * filter_mult, 3)
   x = _reduce_block(x, 448 * filter_mult, 3)
+
   # attention
   # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
+  attention_input = Flatten()(Dropout(0.5)(x))
   attention = Dense(9, activation='softmax', use_bias=False,
-                    kernel_regularizer=l2(1e-5))(Flatten()(x))
+                    kernel_regularizer=l2(1e-5))(attention_input)
   attention = Lambda(lambda x: K.expand_dims(x, axis=-1))(attention)
   x = Multiply()([x, attention])
 
   x = GlobalAveragePooling1D()(x)
-  x = Dropout(0.4)(x)
+  x = Dropout(0.5)(x)
   x = Dense(num_classes, activation='softmax', use_bias=False,
             kernel_regularizer=l2(1e-5))(x)
 
@@ -977,7 +979,7 @@ def xception_with_attention_model(input_size=16000, num_classes=11, filter_mult=
 
   model = Model(input_layer, x, name='xception_with_attention')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=1e-4),
+      optimizer=keras.optimizers.RMSprop(lr=5e-4),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
