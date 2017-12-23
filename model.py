@@ -774,6 +774,69 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11, filter_mult=1):
   return model
 
 
+def conv_1d_time_sliced_with_attention_model(
+        input_size=16000, num_classes=11, filter_mult=1):
+  """ Creates a 1D model for temporal data. Note: Use only
+  with compute_mfcc = False (e.g. raw waveform data).
+  Args:
+    input_size: How big the input vector is.
+    num_classes: How many classes are to be recognized.
+  Returns:
+    Compiled keras model
+  """
+  input_layer = Input(shape=[input_size])
+  x = input_layer
+  x = PreprocessRaw(x)
+
+  def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding=padding, use_bias=False, strides=strides)
+    return x
+
+  def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding=padding, dilation_rate=dilation_rate,
+        use_bias=False)
+    return x
+
+  def _reduce_block(x, num_filters, k):
+    x = _reduce_conv(x, num_filters, k, padding='same')
+    x = _context_conv(x, num_filters, k, padding='valid')
+    return x
+
+  x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
+  # default conv
+  x = Conv1D(64 * filter_mult, 3, strides=2, use_bias=False,
+             kernel_regularizer=l2(1e-5))(x)
+  x = BatchNormalization()(x)
+  x = Activation(relu6)(x)
+  # depthwise conv
+  x = _context_conv(x, 128 * filter_mult, 3)
+  x = _reduce_block(x, 192 * filter_mult, 3)
+  x = _reduce_block(x, 256 * filter_mult, 3)
+  x = _reduce_block(x, 320 * filter_mult, 3)
+  x = _reduce_block(x, 384 * filter_mult, 3)
+  x = _reduce_block(x, 448 * filter_mult, 3)
+  # attention
+  # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
+  attention = Dense(9, activation='softmax', use_bias=False,
+                    kernel_regularizer=l2(1e-5))(Flatten()(x))
+  attention = Lambda(lambda x: K.expand_dims(x, axis=-1))(attention)
+  x = Multiply()([x, attention])
+
+  x = GlobalAveragePooling1D()(x)
+  x = Dropout(0.4)(x)
+  x = Dense(num_classes, activation='softmax', use_bias=False,
+            kernel_regularizer=l2(1e-5))(x)
+
+  model = Model(input_layer, x, name='conv_1d_time_sliced_with_attention')
+  model.compile(
+      optimizer=keras.optimizers.RMSprop(lr=1e-3),
+      loss=keras.losses.categorical_crossentropy,
+      metrics=[keras.metrics.categorical_accuracy])
+  return model
+
+
 def conv_1d_residual_model(input_size=16000, num_classes=11, filter_mult=1):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
@@ -1375,6 +1438,8 @@ def speech_model(model_type, input_size, num_classes=11):
     return conv_1d_residual_model(input_size, num_classes)
   elif model_type == 'xception_with_attention':
     return xception_with_attention_model(input_size, num_classes)
+  elif model_type == 'conv_1d_time_sliced_with_attention':
+    return conv_1d_time_sliced_with_attention_model(input_size, num_classes)
   else:
     raise ValueError("Invalid model: %s" % model_type)
 
