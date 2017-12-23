@@ -32,7 +32,7 @@ PreprocessRaw = Lambda(preprocess_raw)
 
 
 def relu6(x):
-  return K.relu(x, max_value=6)
+  return K.relu(x, max_value=None)
 
 
 def _depthwise_conv_block(
