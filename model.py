@@ -903,8 +903,9 @@ def xception_with_attention_model(input_size=16000, num_classes=11, filter_mult=
 
   # attention
   # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
-  attention = Conv1D(1, 1, activation='softmax', use_bias=False,
-                     kernel_regularizer=l2(1e-5))(x)
+  attention = Dense(13, activation='softmax', use_bias=False,
+                    kernel_regularizer=l2(1e-5))(Flatten()(x))
+  attention = Lambda(lambda x: K.expand_dims(x, axis=-1))(attention)
   x = Multiply()([x, attention])
   x = GlobalAveragePooling1D()(x)
   x = Dropout(0.5)(x)
