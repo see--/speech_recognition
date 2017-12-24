@@ -958,23 +958,21 @@ def xception_with_attention_model(input_size=16000, num_classes=11, filter_mult=
   for i in range(8):
     x = _residual_block(x, 256 * filter_mult, 3)
   x = _residual_block(x, 384 * filter_mult, 3, strides=2)
-  x = _residual_block(x, 512 * filter_mult, 3, strides=2)
-  x = _residual_block(x, 728 * filter_mult, 3, strides=2)
 
   # attention
   # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
-  attention = Dense(13, activation='softmax', use_bias=False,
-                    kernel_regularizer=l2(1e-5))(Flatten()(x))
-  attention = Lambda(lambda x: K.expand_dims(x, axis=-1))(attention)
+  # attention before recurrent unit
+  attention = _context_conv(x, 1, 5, padding='same')
+  attention = Lambda(lambda x: softmax(x, axis=1))(attention)
   x = Multiply()([x, attention])
-  x = GlobalAveragePooling1D()(x)
-  x = Dropout(0.5)(x)
+  x = Bidirectional(GRU(192, kernel_regularizer=l2(1e-5),
+                        dropout=0.2, recurrent_dropout=0.2))(x)
   x = Dense(num_classes, activation='softmax',
             kernel_regularizer=l2(1e-5))(x)
 
   model = Model(input_layer, x, name='xception_with_attention')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=1e-4),
+      optimizer=keras.optimizers.RMSprop(lr=5e-4),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model

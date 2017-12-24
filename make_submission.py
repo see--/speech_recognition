@@ -11,6 +11,7 @@ from tqdm import tqdm
 from keras.models import load_model
 from model import prepare_model_settings, relu6, overlapping_time_slice_stack
 from keras.applications.mobilenet import DepthwiseConv2D
+from keras.activations import softmax
 from input_data import prepare_words_list
 from classes import get_classes, get_int2label
 from utils import center_crop
@@ -73,11 +74,12 @@ if __name__ == '__main__':
       spectrogram,
       wav_decoder.sample_rate,
       dct_coefficient_count=model_settings['dct_coefficient_count'])
-  model = load_model('checkpoints_109/ep-073-vl-0.1745.hdf5',
+  model = load_model('checkpoints_112/ep-062-vl-0.1697.hdf5',
                      custom_objects={'relu6': relu6,
                                      'DepthwiseConv2D': DepthwiseConv2D,
                                      'overlapping_time_slice_stack':
-                                     overlapping_time_slice_stack})
+                                     overlapping_time_slice_stack,
+                                     'softmax': softmax})
   # embed()
 
   # In wanted_labels we map the not wanted words to `unknown`. Though we
@@ -168,11 +170,11 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_109_tta_silentloudleftleft.csv',
+      'submission_112b_tta_silentloudleftleft.csv',
       index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_109_tta_silentloudleftleft_all_labels.csv',
+      'submission_112b_tta_silentloudleftleft_all_labels.csv',
       index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
@@ -180,6 +182,6 @@ if __name__ == '__main__':
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_109_tta_silentloudleftleft_all_labels_probs.csv',
+      'submission_112b_tta_silentloudleftleft_all_labels_probs.csv',
       index=False, compression=None)
   print("Done!")
