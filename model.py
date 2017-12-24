@@ -807,16 +807,16 @@ def conv_1d_time_sliced_with_attention_model(
 
   x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
   # default conv
-  x = Conv1D(64 * filter_mult, 3, strides=2, use_bias=False,
+  x = Conv1D(32 * filter_mult, 3, strides=2, use_bias=False,
              kernel_regularizer=l2(1e-5))(x)
   x = BatchNormalization()(x)
   x = Activation(relu6)(x)
   # depthwise conv
-  x = _context_conv(x, 128 * filter_mult, 3)
+  x = _context_conv(x, 64 * filter_mult, 3)
+  x = _reduce_block(x, 128 * filter_mult, 3)
+  x = _reduce_block(x, 160 * filter_mult, 3)
+  x = _reduce_block(x, 192 * filter_mult, 3)
   x = _reduce_block(x, 256 * filter_mult, 3)
-  x = _reduce_block(x, 320 * filter_mult, 3)
-  x = _reduce_block(x, 448 * filter_mult, 3)
-  x = _reduce_block(x, 512 * filter_mult, 3)
   # attention before recurrent unit
   attention = _context_conv(x, 1, 5, padding='same')
   attention = Lambda(lambda x: softmax(x, axis=1))(attention)
@@ -828,7 +828,7 @@ def conv_1d_time_sliced_with_attention_model(
 
   model = Model(input_layer, x, name='conv_1d_time_sliced_with_attention')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=1e-3),
+      optimizer=keras.optimizers.RMSprop(lr=6e-4),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
