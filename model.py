@@ -10,6 +10,7 @@ from keras.layers import LSTM, GRU, Bidirectional
 from keras.layers import Concatenate, AveragePooling2D
 from keras.layers.noise import AlphaDropout
 from keras.regularizers import l2, l1
+from keras.activations import softmax
 from keras.models import Model
 from keras.applications.mobilenet import DepthwiseConv2D
 
@@ -32,7 +33,7 @@ PreprocessRaw = Lambda(preprocess_raw)
 
 
 def relu6(x):
-  return x * K.sigmoid(x)
+  return K.relu(x, max_value=None)
 
 
 def _depthwise_conv_block(
@@ -812,23 +813,19 @@ def conv_1d_time_sliced_with_attention_model(
   x = Activation(relu6)(x)
   # depthwise conv
   x = _context_conv(x, 128 * filter_mult, 3)
-  x = _reduce_block(x, 192 * filter_mult, 3)
   x = _reduce_block(x, 256 * filter_mult, 3)
   x = _reduce_block(x, 320 * filter_mult, 3)
-  x = _reduce_block(x, 384 * filter_mult, 3)
   x = _reduce_block(x, 448 * filter_mult, 3)
-
-  # attention
-  # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
-  attention_input = Flatten()(Dropout(0.5)(x))
-  attention = Dense(9, activation='softmax', use_bias=False,
-                    kernel_regularizer=l2(1e-5))(attention_input)
-  attention = Lambda(lambda x: K.expand_dims(x, axis=-1))(attention)
+  x = _reduce_block(x, 512 * filter_mult, 3)
+  # attention before recurrent unit
+  attention = Conv1D(1, 3, use_bias=False, padding='same',
+                     kernel_regularizer=l2(1e-5))(x)
+  attention = Lambda(lambda x: softmax(x, axis=1))(attention)
   x = Multiply()([x, attention])
-
-  x = GlobalAveragePooling1D()(x)
-  x = Dropout(0.5)(x)
-  x = Dense(num_classes, activation='softmax', use_bias=False,
+  x = Bidirectional(GRU(256, kernel_regularizer=l2(1e-5),
+                        dropout=0.3, recurrent_dropout=0.3,
+                        unroll=True))(x)
+  x = Dense(num_classes, activation='softmax',
             kernel_regularizer=l2(1e-5))(x)
 
   model = Model(input_layer, x, name='conv_1d_time_sliced_with_attention')
@@ -960,7 +957,7 @@ def xception_with_attention_model(input_size=16000, num_classes=11, filter_mult=
   # depthwise conv
   x = _residual_block(x, 128 * filter_mult, 3, strides=2)  # 200
   x = _residual_block(x, 256 * filter_mult, 3, strides=2)  # 100
-  for i in range(4):
+  for i in range(8):
     x = _residual_block(x, 256 * filter_mult, 3)
   x = _residual_block(x, 384 * filter_mult, 3, strides=2)
   x = _residual_block(x, 512 * filter_mult, 3, strides=2)
@@ -979,7 +976,7 @@ def xception_with_attention_model(input_size=16000, num_classes=11, filter_mult=
 
   model = Model(input_layer, x, name='xception_with_attention')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=5e-4),
+      optimizer=keras.optimizers.RMSprop(lr=1e-4),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
