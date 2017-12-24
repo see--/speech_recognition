@@ -818,13 +818,11 @@ def conv_1d_time_sliced_with_attention_model(
   x = _reduce_block(x, 448 * filter_mult, 3)
   x = _reduce_block(x, 512 * filter_mult, 3)
   # attention before recurrent unit
-  attention = Conv1D(1, 3, use_bias=False, padding='same',
-                     kernel_regularizer=l2(1e-5))(x)
+  attention = _context_conv(x, 1, 5, padding='same')
   attention = Lambda(lambda x: softmax(x, axis=1))(attention)
   x = Multiply()([x, attention])
-  x = Bidirectional(GRU(256, kernel_regularizer=l2(1e-5),
-                        dropout=0.3, recurrent_dropout=0.3,
-                        unroll=True))(x)
+  x = Bidirectional(GRU(128, kernel_regularizer=l2(1e-5),
+                        dropout=0.2, recurrent_dropout=0.2))(x)
   x = Dense(num_classes, activation='softmax',
             kernel_regularizer=l2(1e-5))(x)
 
