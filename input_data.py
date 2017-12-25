@@ -367,16 +367,29 @@ class AudioProcessor(object):
                                  self.background_volume_placeholder_)
     background_add = tf.add(background_mul, shifted_foreground)
     self.background_clamp_ = tf.clip_by_value(background_add, -1.0, 1.0)
+    self.background_clamp_ = tf.reshape(
+        self.background_clamp_, (1, model_settings['desired_samples']))
     # Run the spectrogram and MFCC ops to get a 2D 'fingerprint' of the audio.
-    self.spectrogram_ = contrib_audio.audio_spectrogram(
+    stfts = tf.contrib.signal.stft(
         self.background_clamp_,
-        window_size=model_settings['window_size_samples'],
-        stride=model_settings['window_stride_samples'],
-        magnitude_squared=True)
-    self.mfcc_ = contrib_audio.mfcc(
-        self.spectrogram_,
-        wav_decoder.sample_rate,
-        dct_coefficient_count=model_settings['dct_coefficient_count'])
+        frame_length=model_settings['window_size_samples'],
+        frame_step=model_settings['window_stride_samples'],
+        fft_length=None)
+    self.spectrogram_ = tf.abs(stfts)
+    num_spectrogram_bins = self.spectrogram_.shape[-1].value
+    lower_edge_hertz, upper_edge_hertz = 80.0, 7600.0
+    linear_to_mel_weight_matrix = \
+        tf.contrib.signal.linear_to_mel_weight_matrix(
+            model_settings['dct_coefficient_count'],
+            num_spectrogram_bins, model_settings['sample_rate'],
+            lower_edge_hertz, upper_edge_hertz)
+    mel_spectrograms = tf.tensordot(
+        self.spectrogram_, linear_to_mel_weight_matrix, 1)
+    mel_spectrograms.set_shape(self.spectrogram_.shape[:-1].concatenate(
+        linear_to_mel_weight_matrix.shape[-1:]))
+    log_mel_spectrograms = tf.log(mel_spectrograms + 1e-6)
+    self.mfcc_ = tf.contrib.signal.mfccs_from_log_mel_spectrograms(
+        log_mel_spectrograms)[..., :]  # :13
 
   def set_size(self, mode):
     """Calculates the number of samples in the dataset partition.
@@ -436,7 +449,8 @@ class AudioProcessor(object):
       data_dim = model_settings['spectrogram_length'] * model_settings[
           'spectrogram_frequencies']
     elif self.output_representation == 'mfcc':
-      data_dim = model_settings['fingerprint_size']
+      data_dim = model_settings['spectrogram_length'] * \
+          model_settings['dct_coefficient_count']
 
     data = np.zeros((sample_count, data_dim))
     labels = np.zeros((sample_count, model_settings['label_count']))

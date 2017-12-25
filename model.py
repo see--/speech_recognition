@@ -1392,6 +1392,79 @@ def conv_1d_top_down_model(input_size=16000, num_classes=11):
   return model
 
 
+def conv_1d_log_mfcc_model(
+        input_size=16000, num_classes=11, time_size=65, frequency_size=60):
+  """ Creates a 1D model for temporal data. Note: Use only
+  with compute_mfcc = True.
+  Args:
+    input_size: How big the input vector is.
+    num_classes: How many classes are to be recognized.
+  Returns:
+    Compiled keras model
+  """
+  input_layer = Input(shape=[input_size])
+  x = input_layer
+
+  def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding=padding, use_bias=False, strides=strides)
+    return x
+
+  def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding=padding, dilation_rate=dilation_rate,
+        use_bias=False)
+    return x
+
+  def _reduce_block(x, num_filters, k):
+    x = _reduce_conv(x, num_filters, k, padding='same')
+    x = _context_conv(x, num_filters, k, padding='valid')
+    return x
+
+  def _residual_block(x, num_filters, k, strides=1, padding='same'):
+    if strides != 1:
+      residual = Conv1D(
+          num_filters, 1, strides=strides, padding='same', use_bias=False)(x)
+      residual = BatchNormalization()(residual)
+    else:
+      residual = x
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding='same', use_bias=False)
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding='same', use_bias=False)
+    x = MaxPool1D(pool_size=3, strides=strides, padding='same')(x)
+    return Add()([x, residual])
+
+  x = Reshape([time_size, frequency_size])(x)
+  # default conv
+  x = Conv1D(128, 3, use_bias=False,
+             kernel_regularizer=l2(1e-5))(x)
+  x = BatchNormalization()(x)
+  x = Activation(relu6)(x)
+  # depthwise conv
+  x = _residual_block(x, 128, 3)
+  x = _residual_block(x, 128, 3)
+  x = _residual_block(x, 256, 3, strides=2)
+  x = _residual_block(x, 256, 3)
+  x = _residual_block(x, 256, 3)
+
+  # attention before recurrent unit
+  attention = _context_conv(x, 1, 5, padding='same')
+  attention = Lambda(lambda x: softmax(x, axis=1))(attention)
+  x = Multiply()([x, attention])
+  x = Bidirectional(GRU(128, kernel_regularizer=l2(1e-5),
+                        dropout=0.2, recurrent_dropout=0.2))(x)
+  x = Dense(num_classes, activation='softmax',
+            kernel_regularizer=l2(1e-5))(x)
+
+  model = Model(input_layer, x, name='conv_1d_log_mfcc')
+  model.compile(
+      optimizer=keras.optimizers.RMSprop(lr=6e-4),
+      loss=keras.losses.categorical_crossentropy,
+      metrics=[keras.metrics.categorical_accuracy])
+  return model
+
+
 def speech_model(model_type, input_size, num_classes=11):
   if model_type == 'simple':
     return simple_model(input_size, num_classes)
@@ -1435,6 +1508,8 @@ def speech_model(model_type, input_size, num_classes=11):
     return xception_with_attention_model(input_size, num_classes)
   elif model_type == 'conv_1d_time_sliced_with_attention':
     return conv_1d_time_sliced_with_attention_model(input_size, num_classes)
+  elif model_type == 'conv_1d_log_mfcc':
+    return conv_1d_log_mfcc_model(input_size, num_classes)
   else:
     raise ValueError("Invalid model: %s" % model_type)
 
