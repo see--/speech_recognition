@@ -389,7 +389,7 @@ class AudioProcessor(object):
         linear_to_mel_weight_matrix.shape[-1:]))
     log_mel_spectrograms = tf.log(mel_spectrograms + 1e-6)
     self.mfcc_ = tf.contrib.signal.mfccs_from_log_mel_spectrograms(
-        log_mel_spectrograms)[..., :]  # :13
+        log_mel_spectrograms)[:, :]  # :13
 
   def set_size(self, mode):
     """Calculates the number of samples in the dataset partition.

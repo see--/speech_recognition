@@ -47,7 +47,7 @@ if __name__ == '__main__':
   use_speed_tta = False
   wanted_only = False
   extend_reversed = False
-  compute_mfcc = False
+  output_representation = 'mfcc'
   batch_size = 384
   wanted_words = prepare_words_list(get_classes(wanted_only=True))
   classes = get_classes(
@@ -56,8 +56,8 @@ if __name__ == '__main__':
       wanted_only=wanted_only, extend_reversed=extend_reversed)
   model_settings = prepare_model_settings(
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
-      clip_duration_ms=1000, window_size_ms=30.0, window_stride_ms=10.0,
-      dct_coefficient_count=40)
+      clip_duration_ms=1000, window_size_ms=30.0, window_stride_ms=15.0,
+      dct_coefficient_count=60)
 
   wav_filename_placeholder = tf.placeholder(tf.string, [])
   wav_loader = io_ops.read_file(wav_filename_placeholder)
@@ -65,16 +65,28 @@ if __name__ == '__main__':
       wav_loader, desired_channels=1,
       desired_samples=model_settings['desired_samples'])
   clamped = tf.clip_by_value(wav_decoder.audio, -1.0, 1.0)
-  spectrogram = contrib_audio.audio_spectrogram(
+  clamped = tf.reshape(clamped, (1, model_settings['desired_samples']))
+  stfts = tf.contrib.signal.stft(
       clamped,
-      window_size=model_settings['window_size_samples'],
-      stride=model_settings['window_stride_samples'],
-      magnitude_squared=True)
-  mfcc = contrib_audio.mfcc(
-      spectrogram,
-      wav_decoder.sample_rate,
-      dct_coefficient_count=model_settings['dct_coefficient_count'])
-  model = load_model('checkpoints_112/ep-062-vl-0.1697.hdf5',
+      frame_length=model_settings['window_size_samples'],
+      frame_step=model_settings['window_stride_samples'],
+      fft_length=None)
+  spectrogram = tf.abs(stfts)
+  num_spectrogram_bins = spectrogram.shape[-1].value
+  lower_edge_hertz, upper_edge_hertz = 80.0, 7600.0
+  linear_to_mel_weight_matrix = \
+      tf.contrib.signal.linear_to_mel_weight_matrix(
+          model_settings['dct_coefficient_count'],
+          num_spectrogram_bins, model_settings['sample_rate'],
+          lower_edge_hertz, upper_edge_hertz)
+  mel_spectrograms = tf.tensordot(
+      spectrogram, linear_to_mel_weight_matrix, 1)
+  mel_spectrograms.set_shape(spectrogram.shape[:-1].concatenate(
+      linear_to_mel_weight_matrix.shape[-1:]))
+  log_mel_spectrograms = tf.log(mel_spectrograms + 1e-6)
+  mfcc = tf.contrib.signal.mfccs_from_log_mel_spectrograms(
+      log_mel_spectrograms)[:, :]  # :13
+  model = load_model('checkpoints_116/ep-033-vl-0.1529.hdf5',
                      custom_objects={'relu6': relu6,
                                      'DepthwiseConv2D': DepthwiseConv2D,
                                      'overlapping_time_slice_stack':
@@ -91,7 +103,7 @@ if __name__ == '__main__':
   for i in tqdm(range(len(test_fns[:]))):
     test_fn = test_fns[i]
     fns.append(os.path.basename(test_fn))
-    if compute_mfcc:
+    if output_representation == 'mfcc':
       mfcc_val = sess.run(mfcc, {wav_filename_placeholder: test_fn})
       X_batch.append(mfcc_val.flatten())
     else:
@@ -100,7 +112,7 @@ if __name__ == '__main__':
     if use_speed_tta:
       tta_fn = tta_fns[i]
       assert os.path.basename(tta_fn) == os.path.basename(test_fn)
-      if compute_mfcc:
+      if output_representation == 'mfcc':
         mfcc_val = sess.run(mfcc, {wav_filename_placeholder: tta_fn})
         X_tta_batch.append(mfcc_val.flatten())
       else:
@@ -170,11 +182,11 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_112b_tta_silentloudleftleft.csv',
+      'submission_116b_tta_silentloudleftleft.csv',
       index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_112b_tta_silentloudleftleft_all_labels.csv',
+      'submission_116b_tta_silentloudleftleft_all_labels.csv',
       index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
@@ -182,6 +194,6 @@ if __name__ == '__main__':
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_112b_tta_silentloudleftleft_all_labels_probs.csv',
+      'submission_116b_tta_silentloudleftleft_all_labels_probs.csv',
       index=False, compression=None)
   print("Done!")
