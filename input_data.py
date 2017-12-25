@@ -80,6 +80,10 @@ def which_set(filename, validation_percentage, testing_percentage):
   Returns:
     String, one of 'training', 'validation', 'testing' or 'pseudo'.
   """
+  dir_name = os.path.basename(os.path.dirname(filename))
+  if dir_name == 'unknown_unknown':
+    return 'training'
+
   base_name = os.path.basename(filename)
   # We want to ignore anything after '_nohash_' in the file name when
   # deciding which set to put a wav in, so the data set creator has a way of
