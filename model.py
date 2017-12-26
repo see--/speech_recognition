@@ -1432,7 +1432,7 @@ def conv_1d_log_mfcc_model(
         x, num_filters, k, padding='same', use_bias=False)
     x = _depthwise_conv_block(
         x, num_filters, k, padding='same', use_bias=False)
-    x = AveragePooling1D(pool_size=3, strides=strides, padding='same')(x)
+    x = MaxPool1D(pool_size=3, strides=strides, padding='same')(x)
     return Add()([x, residual])
 
   x = Reshape([time_size, frequency_size])(x)
@@ -1444,22 +1444,22 @@ def conv_1d_log_mfcc_model(
   # depthwise conv
   x = _residual_block(x, 128, 3)
   x = _residual_block(x, 128, 3)
-  x = _residual_block(x, 320, 3, strides=2)
-  x = _residual_block(x, 320, 3)
-  x = _residual_block(x, 320, 3)
+  x = _residual_block(x, 256, 3, strides=2)
+  x = _residual_block(x, 256, 3)
+  x = _residual_block(x, 256, 3)
 
   # attention before recurrent unit
   attention = _context_conv(x, 1, 5, padding='same')
   attention = Lambda(lambda x: softmax(x, axis=1))(attention)
   x = Multiply()([x, attention])
   x = Bidirectional(GRU(128, kernel_regularizer=l2(1e-5),
-                        dropout=0.3, recurrent_dropout=0.3))(x)
+                        dropout=0.2, recurrent_dropout=0.2))(x)
   x = Dense(num_classes, activation='softmax',
             kernel_regularizer=l2(1e-5))(x)
 
   model = Model(input_layer, x, name='conv_1d_log_mfcc')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=5e-4),
+      optimizer=keras.optimizers.RMSprop(lr=9e-4),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
