@@ -1449,9 +1449,9 @@ def conv_1d_log_mfcc_model(
   x = _residual_block(x, 256, 3)
 
   # attention before recurrent unit
-  attention = _context_conv(x, 1, 5, padding='same')
-  attention = Lambda(lambda x: softmax(x, axis=1))(attention)
-  x = Multiply()([x, attention])
+  # attention = _context_conv(x, 1, 5, padding='same')
+  # attention = Lambda(lambda x: softmax(x, axis=1))(attention)
+  # x = Multiply()([x, attention])
   x = Bidirectional(GRU(128, kernel_regularizer=l2(1e-5),
                         dropout=0.2, recurrent_dropout=0.2))(x)
   x = Dense(num_classes, activation='softmax',
@@ -1459,7 +1459,7 @@ def conv_1d_log_mfcc_model(
 
   model = Model(input_layer, x, name='conv_1d_log_mfcc')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=9e-4),
+      optimizer=keras.optimizers.RMSprop(lr=3e-4),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
