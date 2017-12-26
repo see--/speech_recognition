@@ -1402,9 +1402,6 @@ def conv_1d_log_mfcc_model(
   Returns:
     Compiled keras model
   """
-  input_layer = Input(shape=[input_size])
-  x = input_layer
-
   def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
     x = _depthwise_conv_block(
         x, num_filters, k, padding=padding, use_bias=False, strides=strides)
@@ -1435,6 +1432,8 @@ def conv_1d_log_mfcc_model(
     x = MaxPool1D(pool_size=3, strides=strides, padding='same')(x)
     return Add()([x, residual])
 
+  input_layer = Input(shape=[input_size])
+  x = input_layer
   x = Reshape([time_size, frequency_size])(x)
   # default conv
   x = Conv1D(128, 3, use_bias=False,
@@ -1453,13 +1452,13 @@ def conv_1d_log_mfcc_model(
   # attention = Lambda(lambda x: softmax(x, axis=1))(attention)
   # x = Multiply()([x, attention])
   x = Bidirectional(GRU(128, kernel_regularizer=l2(1e-5),
-                        dropout=0.2, recurrent_dropout=0.2))(x)
+                        dropout=0.3, recurrent_dropout=0.3))(x)
   x = Dense(num_classes, activation='softmax',
             kernel_regularizer=l2(1e-5))(x)
 
   model = Model(input_layer, x, name='conv_1d_log_mfcc')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=3e-4),
+      optimizer=keras.optimizers.RMSprop(lr=1e-4),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
