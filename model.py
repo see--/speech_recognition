@@ -904,7 +904,8 @@ def conv_1d_residual_model(input_size=16000, num_classes=11, filter_mult=1):
   return model
 
 
-def xception_with_attention_model(input_size=16000, num_classes=11, filter_mult=1):
+def xception_with_attention_model(
+        input_size=16000, num_classes=11, filter_mult=1):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -1439,12 +1440,14 @@ def conv_1d_log_mfcc_model(
   x = input_layer
   x = Reshape([time_size, frequency_size])(x)
   # default conv
-  x = Conv1D(128, 3, use_bias=False,
+  x = Conv1D(64, 3, use_bias=False,
              kernel_regularizer=l2(1e-5))(x)
   x = BatchNormalization()(x)
   x = Activation(relu6)(x)
   # depthwise conv
-  x = _residual_block(x, 128, 3)
+  x = _residual_block(x, 64, 3)
+  x = _residual_block(x, 64, 3)
+  x = _residual_block(x, 128, 3, strides=2)
   x = _residual_block(x, 128, 3)
   x = _residual_block(x, 192, 3, strides=2)
   x = _residual_block(x, 192, 3)
