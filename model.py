@@ -1475,6 +1475,88 @@ def conv_1d_log_mfcc_model(
   return model
 
 
+def conv_1d_spectrogram_model(
+        input_size=16000, num_classes=11, *args, **kwargs):
+  """ Creates a 1D model for temporal data. Note: Use only
+  with compute_mfcc = True.
+  Args:
+    input_size: How big the input vector is.
+    num_classes: How many classes are to be recognized.
+  Returns:
+    Compiled keras model
+  """
+  time_size = kwargs.get('spectrogram_length', 65)
+  frequency_size = kwargs.get('spectrogram_frequencies', 257)
+
+  def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding=padding, use_bias=False, strides=strides)
+    return x
+
+  def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding=padding, dilation_rate=dilation_rate,
+        use_bias=False)
+    return x
+
+  def _reduce_block(x, num_filters, k):
+    x = _reduce_conv(x, num_filters, k, padding='same')
+    x = _context_conv(x, num_filters, k, padding='valid')
+    return x
+
+  def _residual_block(x, num_filters, k, strides=1, padding='same'):
+    if strides != 1:
+      residual = Conv1D(
+          num_filters, 1, strides=strides, padding='same', use_bias=False)(x)
+      residual = BatchNormalization()(residual)
+    else:
+      residual = x
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding='same', use_bias=False)
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding='same', use_bias=False)
+    x = MaxPool1D(pool_size=strides, strides=strides, padding='same')(x)
+    return Add()([x, residual])
+
+  input_layer = Input(shape=[input_size])
+  x = input_layer
+  x = Reshape([time_size, frequency_size])(x)
+  # default conv
+  x = Conv1D(64, 3, use_bias=False,
+             kernel_regularizer=l2(1e-5))(x)
+  x = BatchNormalization()(x)
+  x = Activation(relu6)(x)
+  # depthwise conv
+  x = _residual_block(x, 64, 3)
+  x = _residual_block(x, 64, 3)
+  x = _residual_block(x, 128, 3, strides=2)
+  x = _residual_block(x, 128, 3)
+  x = _residual_block(x, 192, 3, strides=2)
+  x = _residual_block(x, 192, 3)
+  x = _residual_block(x, 192, 3)
+  x = _residual_block(x, 256, 3, strides=2)
+  x = _residual_block(x, 256, 3)
+  x = _residual_block(x, 256, 3)
+
+  # attention before recurrent unit
+  attention = _context_conv(x, 1, 3, padding='same')
+  attention = Lambda(lambda x: softmax(x, axis=1))(attention)
+  x = Multiply()([x, attention])
+  # x = Bidirectional(GRU(128, kernel_regularizer=l2(1e-5),
+  #                       dropout=0.2, recurrent_dropout=0.2))(x)
+  x = GlobalAveragePooling1D()(x)
+  x = Dropout(0.2)(x)
+  x = Dense(num_classes, activation='softmax',
+            kernel_regularizer=l2(1e-5))(x)
+
+  model = Model(input_layer, x, name='conv_1d_spectrogram')
+  model.compile(
+      optimizer=keras.optimizers.RMSprop(lr=6e-4),
+      loss=keras.losses.categorical_crossentropy,
+      metrics=[keras.metrics.categorical_accuracy])
+  return model
+
+
 def speech_model(model_type, input_size, num_classes=11, *args, **kwargs):
   if model_type == 'simple':
     return simple_model(input_size, num_classes)
@@ -1520,6 +1602,8 @@ def speech_model(model_type, input_size, num_classes=11, *args, **kwargs):
     return conv_1d_time_sliced_with_attention_model(input_size, num_classes)
   elif model_type == 'conv_1d_log_mfcc':
     return conv_1d_log_mfcc_model(input_size, num_classes, *args, **kwargs)
+  elif model_type == 'conv_1d_spectrogram':
+    return conv_1d_spectrogram_model(input_size, num_classes, *args, **kwargs)
   else:
     raise ValueError("Invalid model: %s" % model_type)
 
@@ -1527,7 +1611,8 @@ def speech_model(model_type, input_size, num_classes=11, *args, **kwargs):
 # from here: https://github.com/tensorflow/tensorflow/blob/master/tensorflow/examples/speech_commands/models.py  # noqa
 def prepare_model_settings(label_count, sample_rate, clip_duration_ms,
                            window_size_ms, window_stride_ms,
-                           dct_coefficient_count, num_log_mel_features):
+                           dct_coefficient_count, num_log_mel_features,
+                           output_representation='raw'):
   """Calculates common settings needed for all models.
   Args:
     label_count: How many classes are to be recognized.
@@ -1543,18 +1628,24 @@ def prepare_model_settings(label_count, sample_rate, clip_duration_ms,
   window_size_samples = int(sample_rate * window_size_ms / 1000)
   window_stride_samples = int(sample_rate * window_stride_ms / 1000)
   length_minus_window = (desired_samples - window_size_samples)
+  spectrogram_frequencies = 257
   if length_minus_window < 0:
     spectrogram_length = 0
   else:
     spectrogram_length = 1 + int(length_minus_window / window_stride_samples)
-  fingerprint_size = num_log_mel_features * spectrogram_length
+  if output_representation == 'mfcc':
+    fingerprint_size = num_log_mel_features * spectrogram_length
+  elif output_representation == 'raw':
+    fingerprint_size = desired_samples
+  elif output_representation == 'spec':
+    fingerprint_size = spectrogram_frequencies * spectrogram_length
   return {
       'desired_samples': desired_samples,
       'window_size_samples': window_size_samples,
       'window_stride_samples': window_stride_samples,
       'spectrogram_length': spectrogram_length,
       # TODO(see--): Check where this comes from
-      'spectrogram_frequencies': 257,
+      'spectrogram_frequencies': spectrogram_frequencies,
       'dct_coefficient_count': dct_coefficient_count,
       'fingerprint_size': fingerprint_size,
       'label_count': label_count,

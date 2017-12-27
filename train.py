@@ -7,39 +7,8 @@ from callbacks import ConfusionMatrixCallback
 from model import speech_model, prepare_model_settings
 from input_data import AudioProcessor, prepare_words_list
 from classes import get_classes
+from utils import data_gen
 from IPython import embed  # noqa
-
-
-def data_gen(audio_processor, sess,
-             batch_size=128,
-             background_frequency=0.8, background_volume_range=0.2,
-             foreground_frequency=0.8, foreground_volume_range=0.2,
-             time_shift_frequency=0.8, time_shift_range=[-2000, 0],
-             mode='validation', pseudo_frequency=0.05):
-  offset = 0
-  if mode != 'training':
-    background_frequency = 0.0
-    background_volume_range = 0.0
-    foreground_frequency = 0.0
-    foreground_volume_range = 0.0
-    pseudo_frequency = 0.0
-    time_shift_frequency = 0.0
-    time_shift_range = [0, 0]
-  while True:
-    X, y = audio_processor.get_data(
-        how_many=batch_size, offset=0 if mode == 'training' else offset,
-        background_frequency=background_frequency,
-        background_volume_range=background_volume_range,
-        foreground_frequency=foreground_frequency,
-        foreground_volume_range=foreground_volume_range,
-        time_shift_frequency=time_shift_frequency,
-        time_shift_range=time_shift_range,
-        mode=mode, sess=sess,
-        pseudo_frequency=pseudo_frequency)
-    offset += batch_size
-    if offset > ap.set_size(mode) - batch_size:
-      offset = 0
-    yield X, y
 
 
 # running_mean: -0.8 | running_std: 7.0
@@ -60,14 +29,15 @@ if __name__ == '__main__':
   add_pseudo = True
   if add_pseudo:
     data_dirs.append('data/pseudo/audio')
-  output_representation = 'mfcc'
+  output_representation = 'spec'
   sample_rate = 16000
   batch_size = 384
   classes = get_classes(wanted_only=False, extend_reversed=False)
   model_settings = prepare_model_settings(
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
       clip_duration_ms=1000, window_size_ms=25.0, window_stride_ms=15.0,
-      dct_coefficient_count=80, num_log_mel_features=60)
+      dct_coefficient_count=80, num_log_mel_features=60,
+      output_representation=output_representation)
   ap = AudioProcessor(
       data_dirs=data_dirs, wanted_words=classes,
       silence_percentage=20.0, unknown_percentage=5.0,
@@ -77,8 +47,8 @@ if __name__ == '__main__':
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training')
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation')
   model = speech_model(
-      'conv_1d_log_mfcc',
-      model_settings['fingerprint_size'] if output_representation == 'mfcc' else sample_rate,  # noqa
+      'conv_1d_spectrogram',
+      model_settings['fingerprint_size'],
       num_classes=model_settings['label_count'],
       **model_settings)
   # embed()
@@ -90,8 +60,8 @@ if __name__ == '__main__':
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=4, verbose=1),
-      TensorBoard(log_dir='logs_126'),
-      ModelCheckpoint('checkpoints_126/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
+      TensorBoard(log_dir='logs_127'),
+      ModelCheckpoint('checkpoints_127/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
   model.fit_generator(
       train_gen, steps_per_epoch=ap.set_size('training') // batch_size,
       epochs=200, verbose=1, callbacks=callbacks)

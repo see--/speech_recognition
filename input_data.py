@@ -35,6 +35,8 @@ from tensorflow.python.ops import io_ops
 from tensorflow.python.platform import gfile
 from tensorflow.python.util import compat
 
+from utils import tf_roll
+
 MAX_NUM_WAVS_PER_CLASS = 2**27 - 1  # ~134M
 SILENCE_LABEL = '_silence_'
 SILENCE_INDEX = 0
@@ -337,28 +339,9 @@ class AudioProcessor(object):
                                     self.foreground_volume_placeholder_)
     # Shift the sample's start position, and pad any gaps with zeros.
     self.time_shift_placeholder_ = tf.placeholder(tf.int32)
-
-    def roll(a, shift, a_len=16000):
-      # https://stackoverflow.com/questions/42651714/vector-shift-roll-in-tensorflow
-      def roll_left(a, shift, a_len):
-        shift %= a_len
-        rolled = tf.concat(
-            [a[a_len - shift:, :], a[:a_len - shift, :]], axis=0)
-        return rolled
-
-      def roll_right(a, shift, a_len):
-        shift = -shift
-        shift %= a_len
-        rolled = tf.concat([a[shift:, :], a[:shift, :]], axis=0)
-        return rolled
-      # https://stackoverflow.com/questions/35833011/how-to-add-if-condition-in-a-tensorflow-graph
-      return tf.cond(
-          tf.greater_equal(shift, 0),
-          true_fn=lambda: roll_left(a, shift, a_len),
-          false_fn=lambda: roll_right(a, shift, a_len))
-
-    shifted_foreground = roll(scaled_foreground, self.time_shift_placeholder_)
-
+    # TODO(see--): Write test vs np.roll
+    shifted_foreground = tf_roll(
+        scaled_foreground, self.time_shift_placeholder_)
     # Mix in background noise.
     self.background_data_placeholder_ = tf.placeholder(tf.float32,
                                                        [desired_samples, 1])

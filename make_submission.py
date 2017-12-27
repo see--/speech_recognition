@@ -56,8 +56,8 @@ if __name__ == '__main__':
       wanted_only=wanted_only, extend_reversed=extend_reversed)
   model_settings = prepare_model_settings(
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
-      clip_duration_ms=1000, window_size_ms=30.0, window_stride_ms=15.0,
-      dct_coefficient_count=60)
+      clip_duration_ms=1000, window_size_ms=25.0, window_stride_ms=15.0,
+      dct_coefficient_count=80, num_log_mel_features=60)
 
   wav_filename_placeholder = tf.placeholder(tf.string, [])
   wav_loader = io_ops.read_file(wav_filename_placeholder)
@@ -73,7 +73,7 @@ if __name__ == '__main__':
       fft_length=None)
   spectrogram = tf.abs(stfts)
   num_spectrogram_bins = spectrogram.shape[-1].value
-  lower_edge_hertz, upper_edge_hertz = 80.0, 7600.0
+  lower_edge_hertz, upper_edge_hertz = 200.0, 8000.0
   linear_to_mel_weight_matrix = \
       tf.contrib.signal.linear_to_mel_weight_matrix(
           model_settings['dct_coefficient_count'],
@@ -85,8 +85,9 @@ if __name__ == '__main__':
       linear_to_mel_weight_matrix.shape[-1:]))
   log_mel_spectrograms = tf.log(mel_spectrograms + 1e-6)
   mfcc = tf.contrib.signal.mfccs_from_log_mel_spectrograms(
-      log_mel_spectrograms)[:, :]  # :13
-  model = load_model('checkpoints_120/ep-047-vl-0.1487.hdf5',
+      log_mel_spectrograms)[
+          :, :, :model_settings['num_log_mel_features']]  # :13
+  model = load_model('checkpoints_125/ep-051-vl-0.1363.hdf5',
                      custom_objects={'relu6': relu6,
                                      'DepthwiseConv2D': DepthwiseConv2D,
                                      'overlapping_time_slice_stack':
@@ -123,16 +124,24 @@ if __name__ == '__main__':
     if batch_counter == batch_size:
       probs = model.predict(np.float32(X_batch))
       if use_tta:
-        X_batch_left = np.float32(X_batch)
-        X_batch_left = np.roll(X_batch_left, -1000, axis=1)
+        X_batch_left = np.float32(X_batch).reshape(
+            (-1,
+             model_settings['spectrogram_length'],
+             model_settings['num_log_mel_features']))
+        X_batch_left = np.roll(X_batch_left, -3, axis=1).reshape(
+            (X_batch_left.shape[0], -1))
         left_probs = model.predict(X_batch_left)
 
-        X_batch_left = np.float32(X_batch)
-        X_batch_left = np.roll(X_batch_left, -2000, axis=1)
+        X_batch_left = np.float32(X_batch).reshape(
+            (-1,
+             model_settings['spectrogram_length'],
+             model_settings['num_log_mel_features']))
+        X_batch_left = np.roll(X_batch_left, -6, axis=1).reshape(
+            (X_batch_left.shape[0], -1))
         left_probs2 = model.predict(X_batch_left)
 
-        loud_probs = model.predict(1.2 * np.float32(X_batch))
-        silent_probs = model.predict(0.8 * np.float32(X_batch))
+        loud_probs = model.predict(1.1 * np.float32(X_batch))
+        silent_probs = model.predict(0.9 * np.float32(X_batch))
         if use_speed_tta:
           slow_probs = model.predict(np.float32(X_tta_batch))
           probs = (probs + loud_probs + left_probs + slow_probs) / 4
@@ -155,16 +164,24 @@ if __name__ == '__main__':
   if X_batch:
     probs = model.predict(np.float32(X_batch))
     if use_tta:
-      X_batch_left = np.float32(X_batch)
-      X_batch_left = np.roll(X_batch_left, -1000, axis=1)
+      X_batch_left = np.float32(X_batch).reshape(
+          (-1,
+           model_settings['spectrogram_length'],
+           model_settings['num_log_mel_features']))
+      X_batch_left = np.roll(X_batch_left, -3, axis=1).reshape(
+          (X_batch_left.shape[0], -1))
       left_probs = model.predict(X_batch_left)
 
-      X_batch_left = np.float32(X_batch)
-      X_batch_left = np.roll(X_batch_left, -2000, axis=1)
+      X_batch_left = np.float32(X_batch).reshape(
+          (-1,
+           model_settings['spectrogram_length'],
+           model_settings['num_log_mel_features']))
+      X_batch_left = np.roll(X_batch_left, -6, axis=1).reshape(
+          (X_batch_left.shape[0], -1))
       left_probs2 = model.predict(X_batch_left)
 
-      loud_probs = model.predict(1.2 * np.float32(X_batch))
-      silent_probs = model.predict(0.8 * np.float32(X_batch))
+      loud_probs = model.predict(1.1 * np.float32(X_batch))
+      silent_probs = model.predict(0.9 * np.float32(X_batch))
       if use_speed_tta:
         slow_probs = model.predict(np.float32(X_tta_batch))
         probs = (probs + loud_probs + left_probs + slow_probs) / 4
@@ -182,11 +199,11 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_120.csv',
+      'submission_125.csv',
       index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_120_all_labels.csv',
+      'submission_125_all_labels.csv',
       index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
@@ -194,6 +211,6 @@ if __name__ == '__main__':
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_120_all_labels_probs.csv',
+      'submission_125_all_labels_probs.csv',
       index=False, compression=None)
   print("Done!")
