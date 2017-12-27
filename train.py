@@ -66,8 +66,8 @@ if __name__ == '__main__':
   classes = get_classes(wanted_only=False, extend_reversed=False)
   model_settings = prepare_model_settings(
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
-      clip_duration_ms=1000, window_size_ms=30.0, window_stride_ms=15.0,
-      dct_coefficient_count=60)
+      clip_duration_ms=1000, window_size_ms=25.0, window_stride_ms=15.0,
+      dct_coefficient_count=80, num_log_mel_features=60)
   ap = AudioProcessor(
       data_dirs=data_dirs, wanted_words=classes,
       silence_percentage=20.0, unknown_percentage=5.0,
@@ -79,7 +79,8 @@ if __name__ == '__main__':
   model = speech_model(
       'conv_1d_log_mfcc',
       model_settings['fingerprint_size'] if output_representation == 'mfcc' else sample_rate,  # noqa
-      num_classes=model_settings['label_count'])
+      num_classes=model_settings['label_count'],
+      **model_settings)
   # embed()
   callbacks = [
       ConfusionMatrixCallback(
@@ -89,8 +90,8 @@ if __name__ == '__main__':
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=4, verbose=1),
-      TensorBoard(log_dir='logs_121'),
-      ModelCheckpoint('checkpoints_121/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
+      TensorBoard(log_dir='logs_122'),
+      ModelCheckpoint('checkpoints_122/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
   model.fit_generator(
       train_gen, steps_per_epoch=ap.set_size('training') // batch_size,
       epochs=200, verbose=1, callbacks=callbacks)

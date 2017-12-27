@@ -1393,7 +1393,7 @@ def conv_1d_top_down_model(input_size=16000, num_classes=11):
 
 
 def conv_1d_log_mfcc_model(
-        input_size=16000, num_classes=11, time_size=65, frequency_size=60):
+        input_size=16000, num_classes=11, *args, **kwargs):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = True.
   Args:
@@ -1402,6 +1402,9 @@ def conv_1d_log_mfcc_model(
   Returns:
     Compiled keras model
   """
+  time_size = kwargs.get('spectrogram_length', 65)
+  frequency_size = kwargs.get('num_log_mel_features', 40)
+
   def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
     x = _depthwise_conv_block(
         x, num_filters, k, padding=padding, use_bias=False, strides=strides)
@@ -1436,15 +1439,17 @@ def conv_1d_log_mfcc_model(
   x = input_layer
   x = Reshape([time_size, frequency_size])(x)
   # default conv
-  x = Conv1D(128, 3, use_bias=False,
+  x = Conv1D(64, 3, use_bias=False,
              kernel_regularizer=l2(1e-5))(x)
   x = BatchNormalization()(x)
   x = Activation(relu6)(x)
   # depthwise conv
+  x = _residual_block(x, 64, 3)
+  x = _residual_block(x, 64, 3)
+  x = _residual_block(x, 128, 3, strides=2)
   x = _residual_block(x, 128, 3)
   x = _residual_block(x, 128, 3)
   x = _residual_block(x, 256, 3, strides=2)
-  x = _residual_block(x, 256, 3)
   x = _residual_block(x, 256, 3)
 
   # attention before recurrent unit
@@ -1458,13 +1463,13 @@ def conv_1d_log_mfcc_model(
 
   model = Model(input_layer, x, name='conv_1d_log_mfcc')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=4e-4),
+      optimizer=keras.optimizers.RMSprop(lr=5e-4),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
 
 
-def speech_model(model_type, input_size, num_classes=11):
+def speech_model(model_type, input_size, num_classes=11, *args, **kwargs):
   if model_type == 'simple':
     return simple_model(input_size, num_classes)
   elif model_type == 'snn':
@@ -1508,7 +1513,7 @@ def speech_model(model_type, input_size, num_classes=11):
   elif model_type == 'conv_1d_time_sliced_with_attention':
     return conv_1d_time_sliced_with_attention_model(input_size, num_classes)
   elif model_type == 'conv_1d_log_mfcc':
-    return conv_1d_log_mfcc_model(input_size, num_classes)
+    return conv_1d_log_mfcc_model(input_size, num_classes, *args, **kwargs)
   else:
     raise ValueError("Invalid model: %s" % model_type)
 
@@ -1516,7 +1521,7 @@ def speech_model(model_type, input_size, num_classes=11):
 # from here: https://github.com/tensorflow/tensorflow/blob/master/tensorflow/examples/speech_commands/models.py  # noqa
 def prepare_model_settings(label_count, sample_rate, clip_duration_ms,
                            window_size_ms, window_stride_ms,
-                           dct_coefficient_count):
+                           dct_coefficient_count, num_log_mel_features):
   """Calculates common settings needed for all models.
   Args:
     label_count: How many classes are to be recognized.
@@ -1536,7 +1541,7 @@ def prepare_model_settings(label_count, sample_rate, clip_duration_ms,
     spectrogram_length = 0
   else:
     spectrogram_length = 1 + int(length_minus_window / window_stride_samples)
-  fingerprint_size = dct_coefficient_count * spectrogram_length
+  fingerprint_size = num_log_mel_features * spectrogram_length
   return {
       'desired_samples': desired_samples,
       'window_size_samples': window_size_samples,
@@ -1548,4 +1553,5 @@ def prepare_model_settings(label_count, sample_rate, clip_duration_ms,
       'fingerprint_size': fingerprint_size,
       'label_count': label_count,
       'sample_rate': sample_rate,
+      'num_log_mel_features': num_log_mel_features
   }

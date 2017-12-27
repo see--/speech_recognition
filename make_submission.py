@@ -86,7 +86,7 @@ if __name__ == '__main__':
   log_mel_spectrograms = tf.log(mel_spectrograms + 1e-6)
   mfcc = tf.contrib.signal.mfccs_from_log_mel_spectrograms(
       log_mel_spectrograms)[:, :]  # :13
-  model = load_model('checkpoints_118/ep-043-vl-0.1271.hdf5',
+  model = load_model('checkpoints_120/ep-047-vl-0.1487.hdf5',
                      custom_objects={'relu6': relu6,
                                      'DepthwiseConv2D': DepthwiseConv2D,
                                      'overlapping_time_slice_stack':
@@ -182,11 +182,11 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_118.csv',
+      'submission_120.csv',
       index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_118_all_labels.csv',
+      'submission_120_all_labels.csv',
       index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
@@ -194,6 +194,6 @@ if __name__ == '__main__':
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_118_all_labels_probs.csv',
+      'submission_120_all_labels_probs.csv',
       index=False, compression=None)
   print("Done!")

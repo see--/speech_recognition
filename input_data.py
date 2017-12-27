@@ -377,7 +377,7 @@ class AudioProcessor(object):
         fft_length=None)
     self.spectrogram_ = tf.abs(stfts)
     num_spectrogram_bins = self.spectrogram_.shape[-1].value
-    lower_edge_hertz, upper_edge_hertz = 80.0, 7600.0
+    lower_edge_hertz, upper_edge_hertz = 200.0, 8000.0
     linear_to_mel_weight_matrix = \
         tf.contrib.signal.linear_to_mel_weight_matrix(
             model_settings['dct_coefficient_count'],
@@ -389,7 +389,8 @@ class AudioProcessor(object):
         linear_to_mel_weight_matrix.shape[-1:]))
     log_mel_spectrograms = tf.log(mel_spectrograms + 1e-6)
     self.mfcc_ = tf.contrib.signal.mfccs_from_log_mel_spectrograms(
-        log_mel_spectrograms)[:, :]  # :13
+        log_mel_spectrograms)[
+        :, :, :model_settings['num_log_mel_features']]  # :13
 
   def set_size(self, mode):
     """Calculates the number of samples in the dataset partition.
@@ -450,7 +451,7 @@ class AudioProcessor(object):
           'spectrogram_frequencies']
     elif self.output_representation == 'mfcc':
       data_dim = model_settings['spectrogram_length'] * \
-          model_settings['dct_coefficient_count']
+          model_settings['num_log_mel_features']
 
     data = np.zeros((sample_count, data_dim))
     labels = np.zeros((sample_count, model_settings['label_count']))
