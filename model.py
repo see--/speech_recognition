@@ -1439,29 +1439,34 @@ def conv_1d_log_mfcc_model(
   x = input_layer
   x = Reshape([time_size, frequency_size])(x)
   # default conv
-  x = Conv1D(64, 3, use_bias=False,
+  x = Conv1D(128, 3, use_bias=False,
              kernel_regularizer=l2(1e-5))(x)
   x = BatchNormalization()(x)
   x = Activation(relu6)(x)
   # depthwise conv
-  x = _residual_block(x, 64, 3)
-  x = _residual_block(x, 64, 3)
-  x = _residual_block(x, 128, 3, strides=2)
   x = _residual_block(x, 128, 3)
   x = _residual_block(x, 128, 3)
+  x = _residual_block(x, 192, 3, strides=2)
+  x = _residual_block(x, 192, 3)
+  x = _residual_block(x, 192, 3)
+  x = _residual_block(x, 256, 3, strides=2)
+  x = _residual_block(x, 256, 3)
+  x = _residual_block(x, 256, 3)
 
   # attention before recurrent unit
-  attention = _context_conv(x, 1, 5, padding='same')
+  attention = _context_conv(x, 1, 3, padding='same')
   attention = Lambda(lambda x: softmax(x, axis=1))(attention)
   x = Multiply()([x, attention])
-  x = Bidirectional(GRU(64, kernel_regularizer=l2(1e-5),
-                        dropout=0.2, recurrent_dropout=0.2))(x)
+  # x = Bidirectional(GRU(128, kernel_regularizer=l2(1e-5),
+  #                       dropout=0.2, recurrent_dropout=0.2))(x)
+  x = GlobalAveragePooling1D()(x)
+  x = Dropout(0.2)(x)
   x = Dense(num_classes, activation='softmax',
             kernel_regularizer=l2(1e-5))(x)
 
   model = Model(input_layer, x, name='conv_1d_log_mfcc')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=9e-4),
+      optimizer=keras.optimizers.RMSprop(lr=6e-4),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
