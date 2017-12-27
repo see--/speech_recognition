@@ -1452,13 +1452,13 @@ def conv_1d_log_mfcc_model(
   # attention = Lambda(lambda x: softmax(x, axis=1))(attention)
   # x = Multiply()([x, attention])
   x = Bidirectional(GRU(128, kernel_regularizer=l2(1e-5),
-                        dropout=0.3, recurrent_dropout=0.3))(x)
+                        dropout=0.2, recurrent_dropout=0.2))(x)
   x = Dense(num_classes, activation='softmax',
             kernel_regularizer=l2(1e-5))(x)
 
   model = Model(input_layer, x, name='conv_1d_log_mfcc')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=1e-4),
+      optimizer=keras.optimizers.RMSprop(lr=4e-4),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
