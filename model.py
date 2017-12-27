@@ -1432,7 +1432,7 @@ def conv_1d_log_mfcc_model(
         x, num_filters, k, padding='same', use_bias=False)
     x = _depthwise_conv_block(
         x, num_filters, k, padding='same', use_bias=False)
-    x = MaxPool1D(pool_size=3, strides=strides, padding='same')(x)
+    x = MaxPool1D(pool_size=strides, strides=strides, padding='same')(x)
     return Add()([x, residual])
 
   input_layer = Input(shape=[input_size])
