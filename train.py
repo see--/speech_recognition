@@ -13,7 +13,7 @@ from IPython import embed  # noqa
 def data_gen(audio_processor, sess,
              batch_size=128,
              background_frequency=0.8, background_volume_range=0.2,
-             foreground_frequency=0.8, foreground_volume_range=0.3,
+             foreground_frequency=0.8, foreground_volume_range=0.2,
              time_shift_frequency=0.8, time_shift_range=[-2000, 0],
              mode='validation', pseudo_frequency=0.05):
   offset = 0
@@ -90,8 +90,8 @@ if __name__ == '__main__':
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=4, verbose=1),
-      TensorBoard(log_dir='logs_122'),
-      ModelCheckpoint('checkpoints_122/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
+      TensorBoard(log_dir='logs_123'),
+      ModelCheckpoint('checkpoints_123/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
   model.fit_generator(
       train_gen, steps_per_epoch=ap.set_size('training') // batch_size,
       epochs=200, verbose=1, callbacks=callbacks)
