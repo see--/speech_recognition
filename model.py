@@ -1551,7 +1551,7 @@ def conv_1d_spectrogram_model(
 
   model = Model(input_layer, x, name='conv_1d_spectrogram')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=1e-4),
+      optimizer=keras.optimizers.RMSprop(lr=3e-4),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
