@@ -51,7 +51,7 @@ if __name__ == '__main__':
       model_settings['fingerprint_size'],
       num_classes=model_settings['label_count'],
       **model_settings)
-  # embed()
+  embed()
   callbacks = [
       ConfusionMatrixCallback(
           val_gen, ap.set_size('validation') // batch_size,
@@ -60,8 +60,8 @@ if __name__ == '__main__':
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=4, verbose=1),
-      TensorBoard(log_dir='logs_131'),
-      ModelCheckpoint('checkpoints_131/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
+      TensorBoard(log_dir='logs_132'),
+      ModelCheckpoint('checkpoints_132/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
   model.fit_generator(
       train_gen, steps_per_epoch=ap.set_size('training') // batch_size,
       epochs=200, verbose=1, callbacks=callbacks)

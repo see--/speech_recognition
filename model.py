@@ -1635,15 +1635,17 @@ def conv_1d_mfcc_and_raw_model(
   x = _residual_block(x, 256, 3)
   x = _residual_block(x, 320, 3, strides=2)
   x = _residual_block(x, 320, 3)
+  x = _residual_block(x, 384, 3, strides=2)
+  x = _residual_block(x, 384, 3)
 
   # attention before recurrent unit
-  attention = _context_conv(x, 1, 3, padding='same')
-  attention = Lambda(lambda x: softmax(x, axis=1))(attention)
-  x = Multiply()([x, attention])
+  # attention = _context_conv(x, 1, 3, padding='same')
+  # attention = Lambda(lambda x: softmax(x, axis=1))(attention)
+  # x = Multiply()([x, attention])
   # x = Bidirectional(GRU(128, kernel_regularizer=l2(1e-5),
   #                       dropout=0.2, recurrent_dropout=0.2))(x)
   x = GlobalAveragePooling1D()(x)
-  x = Dropout(0.2)(x)
+  x = Dropout(0.3)(x)
   x = Dense(num_classes, activation='softmax',
             kernel_regularizer=l2(1e-5))(x)
 
