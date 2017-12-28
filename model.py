@@ -67,6 +67,8 @@ def time_slice_stack(x, step):
     return x_slices
 
 
+# TODO(see--): Replace with `tf.contrib.signal.frame`
+# https://www.tensorflow.org/api_docs/python/tf/contrib/signal/frame
 def overlapping_time_slice_stack(x, ksize, stride, padding='SAME'):
     from tensorflow import extract_image_patches as extract
     ksizes = [1, 1, ksize, 1]
@@ -1600,7 +1602,7 @@ def conv_1d_mfcc_and_raw_model(
         x, num_filters, k, padding='same', use_bias=False)
     x = _depthwise_conv_block(
         x, num_filters, k, padding='same', use_bias=False)
-    x = MaxPool1D(pool_size=strides, strides=strides, padding='same')(x)
+    x = MaxPool1D(pool_size=3, strides=strides, padding='same')(x)
     return Add()([x, residual])
 
   # mfcc features
@@ -1618,23 +1620,21 @@ def conv_1d_mfcc_and_raw_model(
   x_raw = Lambda(lambda x: overlapping_time_slice_stack(
       x, frame_length, frame_step, padding='VALID'))(x_raw)
   # default conv
-  x_raw = Conv1D(64, 3, use_bias=False,
+  x_raw = Conv1D(96, 3, use_bias=False,
                  kernel_regularizer=l2(1e-5))(x_raw)
   x_raw = BatchNormalization()(x_raw)
   x_raw = Activation(relu6)(x_raw)
 
   # depthwise conv
   x = Concatenate()([x_mfcc, x_raw])
-  x = _residual_block(x, 128, 3)
-  x = _residual_block(x, 128, 3)
-  x = _residual_block(x, 160, 3, strides=2)
+  x = _residual_block(x, 160, 3)
   x = _residual_block(x, 160, 3)
   x = _residual_block(x, 192, 3, strides=2)
   x = _residual_block(x, 192, 3)
-  x = _residual_block(x, 192, 3)
   x = _residual_block(x, 256, 3, strides=2)
   x = _residual_block(x, 256, 3)
-  x = _residual_block(x, 256, 3)
+  x = _residual_block(x, 320, 3, strides=2)
+  x = _residual_block(x, 320, 3)
 
   # attention before recurrent unit
   attention = _context_conv(x, 1, 3, padding='same')
@@ -1650,7 +1650,7 @@ def conv_1d_mfcc_and_raw_model(
   model = Model([input_layer_mfcc, input_layer_raw],
                 x, name='conv_1d_mfcc_and_raw')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=6e-4),
+      optimizer=keras.optimizers.RMSprop(lr=5e-4),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
