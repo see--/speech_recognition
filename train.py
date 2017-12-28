@@ -29,29 +29,29 @@ if __name__ == '__main__':
   add_pseudo = True
   if add_pseudo:
     data_dirs.append('data/pseudo/audio')
-  output_representation = 'mfcc_and_raw'
+  output_representation = 'raw'
   sample_rate = 16000
   batch_size = 384
   classes = get_classes(wanted_only=False, extend_reversed=False)
   model_settings = prepare_model_settings(
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
-      clip_duration_ms=1000, window_size_ms=25.0, window_stride_ms=15.0,
+      clip_duration_ms=1000, window_size_ms=30.0, window_stride_ms=10.0,
       dct_coefficient_count=80, num_log_mel_features=60,
       output_representation=output_representation)
   ap = AudioProcessor(
       data_dirs=data_dirs, wanted_words=classes,
-      silence_percentage=20.0, unknown_percentage=5.0,
+      silence_percentage=15.0, unknown_percentage=5.0,
       validation_percentage=10.0, testing_percentage=0.0,
       model_settings=model_settings,
       output_representation=output_representation)
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training')
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation')
   model = speech_model(
-      'conv_1d_mfcc_and_raw',
-      model_settings['fingerprint_size'],
+      'conv_1d_time_sliced_with_attention',
+      model_settings['fingerprint_size'] if output_representation != 'raw' else model_settings['desired_samples'],  # noqa
       num_classes=model_settings['label_count'],
       **model_settings)
-  embed()
+  # embed()
   callbacks = [
       ConfusionMatrixCallback(
           val_gen, ap.set_size('validation') // batch_size,
@@ -60,8 +60,8 @@ if __name__ == '__main__':
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=4, verbose=1),
-      TensorBoard(log_dir='logs_132'),
-      ModelCheckpoint('checkpoints_132/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
+      TensorBoard(log_dir='logs_133'),
+      ModelCheckpoint('checkpoints_133/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
   model.fit_generator(
       train_gen, steps_per_epoch=ap.set_size('training') // batch_size,
       epochs=200, verbose=1, callbacks=callbacks)

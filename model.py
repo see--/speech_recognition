@@ -809,28 +809,32 @@ def conv_1d_time_sliced_with_attention_model(
 
   x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
   # default conv
-  x = Conv1D(32 * filter_mult, 3, strides=2, use_bias=False,
+  x = Conv1D(64 * filter_mult, 3, strides=2, use_bias=False,
              kernel_regularizer=l2(1e-5))(x)
   x = BatchNormalization()(x)
   x = Activation(relu6)(x)
   # depthwise conv
-  x = _context_conv(x, 64 * filter_mult, 3)
-  x = _reduce_block(x, 128 * filter_mult, 3)
-  x = _reduce_block(x, 160 * filter_mult, 3)
+  x = _context_conv(x, 128 * filter_mult, 3)
   x = _reduce_block(x, 192 * filter_mult, 3)
   x = _reduce_block(x, 256 * filter_mult, 3)
-  # attention before recurrent unit
-  attention = _context_conv(x, 1, 5, padding='same')
-  attention = Lambda(lambda x: softmax(x, axis=1))(attention)
+  x = _reduce_block(x, 320 * filter_mult, 3)
+  x = _reduce_block(x, 384 * filter_mult, 3)
+  x = _reduce_block(x, 448 * filter_mult, 3)
+  # attention
+  # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
+  attention = Dense(9, activation='softmax', use_bias=False,
+                    kernel_regularizer=l2(1e-5))(Flatten()(x))
+  attention = Lambda(lambda x: K.expand_dims(x, axis=-1))(attention)
   x = Multiply()([x, attention])
-  x = Bidirectional(GRU(128, kernel_regularizer=l2(1e-5),
-                        dropout=0.2, recurrent_dropout=0.2))(x)
-  x = Dense(num_classes, activation='softmax',
+
+  x = GlobalAveragePooling1D()(x)
+  x = Dropout(0.4)(x)
+  x = Dense(num_classes, activation='softmax', use_bias=False,
             kernel_regularizer=l2(1e-5))(x)
 
   model = Model(input_layer, x, name='conv_1d_time_sliced_with_attention')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=6e-4),
+      optimizer=keras.optimizers.RMSprop(lr=1e-3),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
