@@ -59,9 +59,9 @@ if __name__ == '__main__':
           all_words=prepare_words_list(classes),
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
-                        factor=0.6, patience=3, verbose=1),
-      TensorBoard(log_dir='logs_134'),
-      ModelCheckpoint('checkpoints_134/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
+                        factor=0.5, patience=4, verbose=1),
+      TensorBoard(log_dir='logs_135'),
+      ModelCheckpoint('checkpoints_135/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
   model.fit_generator(
       train_gen, steps_per_epoch=ap.set_size('training') // batch_size,
       epochs=200, verbose=1, callbacks=callbacks)
