@@ -33,7 +33,7 @@ PreprocessRaw = Lambda(preprocess_raw)
 
 
 def relu6(x):
-  return K.relu(x, max_value=None)
+  return K.relu(x, max_value=6)
 
 
 def _depthwise_conv_block(
@@ -816,10 +816,17 @@ def conv_1d_time_sliced_with_attention_model(
   # depthwise conv
   x = _context_conv(x, 128 * filter_mult, 3)
   x = _reduce_block(x, 192 * filter_mult, 3)
+  x = _context_conv(x, 192 * filter_mult, 3, padding='same')
   x = _reduce_block(x, 256 * filter_mult, 3)
+  x = _context_conv(x, 256 * filter_mult, 3, padding='same')
   x = _reduce_block(x, 320 * filter_mult, 3)
+  x = _context_conv(x, 320 * filter_mult, 3, padding='same')
   x = _reduce_block(x, 384 * filter_mult, 3)
+  x = _context_conv(x, 384 * filter_mult, 3, padding='same')
   x = _reduce_block(x, 448 * filter_mult, 3)
+  x = _context_conv(x, 448 * filter_mult, 3, padding='same')
+  x = _context_conv(x, 512 * filter_mult, 3, padding='same')
+
   # attention
   # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
   attention = Dense(9, activation='softmax', use_bias=False,

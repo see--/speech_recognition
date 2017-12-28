@@ -46,7 +46,7 @@ if __name__ == '__main__':
   use_speed_tta = False
   wanted_only = False
   extend_reversed = False
-  output_representation = 'mfcc_and_raw'
+  output_representation = 'raw'
   batch_size = 384
   wanted_words = prepare_words_list(get_classes(wanted_only=True))
   classes = get_classes(
@@ -64,7 +64,7 @@ if __name__ == '__main__':
       validation_percentage=10.0, testing_percentage=0.0,
       model_settings=model_settings,
       output_representation=output_representation)
-  model = load_model('checkpoints_130/ep-060-vl-0.1416.hdf5',
+  model = load_model('checkpoints_133/ep-070-vl-0.1795.hdf5',
                      custom_objects={'relu6': relu6,
                                      'DepthwiseConv2D': DepthwiseConv2D,
                                      'overlapping_time_slice_stack':
@@ -203,11 +203,11 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_130.csv',
+      'submission_133.csv',
       index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_130_all_labels.csv',
+      'submission_133_all_labels.csv',
       index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
@@ -215,6 +215,6 @@ if __name__ == '__main__':
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_130_all_labels_probs.csv',
+      'submission_133_all_labels_probs.csv',
       index=False, compression=None)
   print("Done!")
