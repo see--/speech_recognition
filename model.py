@@ -67,14 +67,14 @@ def time_slice_stack(x, step):
     return x_slices
 
 
-def overlapping_time_slice_stack(x, ksize, stride):
+def overlapping_time_slice_stack(x, ksize, stride, padding='SAME'):
     from tensorflow import extract_image_patches as extract
     ksizes = [1, 1, ksize, 1]
     strides = [1, 1, stride, 1]
     rates = [1, 1, 1, 1]
     N, W = K.int_shape(x)
     x_slices = K.reshape(x, [-1, 1, W, 1])
-    x_slices = extract(x_slices, ksizes, strides, rates, 'SAME')
+    x_slices = extract(x_slices, ksizes, strides, rates, padding)
     x_slices = K.squeeze(x_slices, axis=1)
     return x_slices
 
@@ -1557,6 +1557,105 @@ def conv_1d_spectrogram_model(
   return model
 
 
+def conv_1d_mfcc_and_raw_model(
+        input_size=16000, num_classes=11, *args, **kwargs):
+  """ Creates a 1D model for temporal data. Note: Use only
+  with compute_mfcc = True.
+  Args:
+    input_size: How big the input vector is.
+    num_classes: How many classes are to be recognized.
+  Returns:
+    Compiled keras model
+  """
+  time_size = kwargs.get('spectrogram_length', 65)
+  frequency_size = kwargs.get('num_log_mel_features', 40)
+  raw_size = kwargs.get('desired_samples', 16000)
+  frame_length = kwargs.get('window_size_samples', 480)
+  frame_step = kwargs.get('window_stride_samples', 160)
+
+  def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding=padding, use_bias=False, strides=strides)
+    return x
+
+  def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding=padding, dilation_rate=dilation_rate,
+        use_bias=False)
+    return x
+
+  def _reduce_block(x, num_filters, k):
+    x = _reduce_conv(x, num_filters, k, padding='same')
+    x = _context_conv(x, num_filters, k, padding='valid')
+    return x
+
+  def _residual_block(x, num_filters, k, strides=1, padding='same'):
+    if strides != 1:
+      residual = Conv1D(
+          num_filters, 1, strides=strides, padding='same', use_bias=False)(x)
+      residual = BatchNormalization()(residual)
+    else:
+      residual = x
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding='same', use_bias=False)
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding='same', use_bias=False)
+    x = MaxPool1D(pool_size=strides, strides=strides, padding='same')(x)
+    return Add()([x, residual])
+
+  # mfcc features
+  input_layer_mfcc = Input(shape=[input_size])
+  x_mfcc = input_layer_mfcc
+  x_mfcc = Reshape([time_size, frequency_size])(x_mfcc)
+  # default conv
+  x_mfcc = Conv1D(64, 3, use_bias=False,
+                  kernel_regularizer=l2(1e-5))(x_mfcc)
+  x_mfcc = BatchNormalization()(x_mfcc)
+  x_mfcc = Activation(relu6)(x_mfcc)
+  # raw features
+  input_layer_raw = Input(shape=[raw_size])
+  x_raw = input_layer_raw
+  x_raw = Lambda(lambda x: overlapping_time_slice_stack(
+      x, frame_length, frame_step, padding='VALID'))(x_raw)
+  # default conv
+  x_raw = Conv1D(64, 3, use_bias=False,
+                 kernel_regularizer=l2(1e-5))(x_raw)
+  x_raw = BatchNormalization()(x_raw)
+  x_raw = Activation(relu6)(x_raw)
+
+  # depthwise conv
+  x = Concatenate()([x_mfcc, x_raw])
+  x = _residual_block(x, 128, 3)
+  x = _residual_block(x, 128, 3)
+  x = _residual_block(x, 160, 3, strides=2)
+  x = _residual_block(x, 160, 3)
+  x = _residual_block(x, 192, 3, strides=2)
+  x = _residual_block(x, 192, 3)
+  x = _residual_block(x, 192, 3)
+  x = _residual_block(x, 256, 3, strides=2)
+  x = _residual_block(x, 256, 3)
+  x = _residual_block(x, 256, 3)
+
+  # attention before recurrent unit
+  attention = _context_conv(x, 1, 3, padding='same')
+  attention = Lambda(lambda x: softmax(x, axis=1))(attention)
+  x = Multiply()([x, attention])
+  # x = Bidirectional(GRU(128, kernel_regularizer=l2(1e-5),
+  #                       dropout=0.2, recurrent_dropout=0.2))(x)
+  x = GlobalAveragePooling1D()(x)
+  x = Dropout(0.2)(x)
+  x = Dense(num_classes, activation='softmax',
+            kernel_regularizer=l2(1e-5))(x)
+
+  model = Model([input_layer_mfcc, input_layer_raw],
+                x, name='conv_1d_mfcc_and_raw')
+  model.compile(
+      optimizer=keras.optimizers.RMSprop(lr=6e-4),
+      loss=keras.losses.categorical_crossentropy,
+      metrics=[keras.metrics.categorical_accuracy])
+  return model
+
+
 def speech_model(model_type, input_size, num_classes=11, *args, **kwargs):
   if model_type == 'simple':
     return simple_model(input_size, num_classes)
@@ -1604,6 +1703,8 @@ def speech_model(model_type, input_size, num_classes=11, *args, **kwargs):
     return conv_1d_log_mfcc_model(input_size, num_classes, *args, **kwargs)
   elif model_type == 'conv_1d_spectrogram':
     return conv_1d_spectrogram_model(input_size, num_classes, *args, **kwargs)
+  elif model_type == 'conv_1d_mfcc_and_raw':
+    return conv_1d_mfcc_and_raw_model(input_size, num_classes, *args, **kwargs)
   else:
     raise ValueError("Invalid model: %s" % model_type)
 
@@ -1639,6 +1740,8 @@ def prepare_model_settings(label_count, sample_rate, clip_duration_ms,
     fingerprint_size = desired_samples
   elif output_representation == 'spec':
     fingerprint_size = spectrogram_frequencies * spectrogram_length
+  elif output_representation == 'mfcc_and_raw':
+    fingerprint_size = num_log_mel_features * spectrogram_length
   return {
       'desired_samples': desired_samples,
       'window_size_samples': window_size_samples,

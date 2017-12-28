@@ -163,7 +163,7 @@ class AudioProcessor(object):
                wanted_words, validation_percentage, testing_percentage,
                model_settings, output_representation=False):
     self.data_dirs = data_dirs
-    assert output_representation in {'raw', 'spec', 'mfcc'}
+    assert output_representation in {'raw', 'spec', 'mfcc', 'mfcc_and_raw'}
     self.output_representation = output_representation
     self.model_settings = model_settings
     for data_dir in self.data_dirs:
@@ -360,7 +360,7 @@ class AudioProcessor(object):
         fft_length=None)
     self.spectrogram_ = tf.abs(stfts)
     num_spectrogram_bins = self.spectrogram_.shape[-1].value
-    lower_edge_hertz, upper_edge_hertz = 200.0, 8000.0
+    lower_edge_hertz, upper_edge_hertz = 80.0, 7600.0
     linear_to_mel_weight_matrix = \
         tf.contrib.signal.linear_to_mel_weight_matrix(
             model_settings['dct_coefficient_count'],
@@ -435,6 +435,10 @@ class AudioProcessor(object):
     elif self.output_representation == 'mfcc':
       data_dim = model_settings['spectrogram_length'] * \
           model_settings['num_log_mel_features']
+    elif self.output_representation == 'mfcc_and_raw':
+      data_dim = model_settings['spectrogram_length'] * \
+          model_settings['num_log_mel_features']
+      raw_data = np.zeros((sample_count, model_settings['desired_samples']))
 
     data = np.zeros((sample_count, data_dim))
     labels = np.zeros((sample_count, model_settings['label_count']))
@@ -505,9 +509,19 @@ class AudioProcessor(object):
       elif self.output_representation == 'mfcc':
         data[i - offset, :] = sess.run(
             self.mfcc_, feed_dict=input_dict).flatten()
+      elif self.output_representation == 'mfcc_and_raw':
+        raw_val, mfcc_val = sess.run(
+            [self.background_clamp_,
+             self.mfcc_], feed_dict=input_dict)
+        data[i - offset, :] = mfcc_val.flatten()
+        raw_data[i - offset, :] = raw_val.flatten()
       label_index = self.word_to_index[sample['label']]
       labels[i - offset, label_index] = 1
-    return data, labels
+
+    if self.output_representation != 'mfcc_and_raw':
+      return data, labels
+    else:
+      return [data, raw_data], labels
 
   def get_unprocessed_data(self, how_many, model_settings, mode):
     """Retrieve sample data for the given partition, with no transformations.

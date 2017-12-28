@@ -29,7 +29,7 @@ if __name__ == '__main__':
   add_pseudo = True
   if add_pseudo:
     data_dirs.append('data/pseudo/audio')
-  output_representation = 'spec'
+  output_representation = 'mfcc_and_raw'
   sample_rate = 16000
   batch_size = 384
   classes = get_classes(wanted_only=False, extend_reversed=False)
@@ -47,7 +47,7 @@ if __name__ == '__main__':
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training')
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation')
   model = speech_model(
-      'conv_1d_spectrogram',
+      'conv_1d_mfcc_and_raw',
       model_settings['fingerprint_size'],
       num_classes=model_settings['label_count'],
       **model_settings)
@@ -60,8 +60,8 @@ if __name__ == '__main__':
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=4, verbose=1),
-      TensorBoard(log_dir='logs_129'),
-      ModelCheckpoint('checkpoints_129/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
+      TensorBoard(log_dir='logs_130'),
+      ModelCheckpoint('checkpoints_130/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
   model.fit_generator(
       train_gen, steps_per_epoch=ap.set_size('training') // batch_size,
       epochs=200, verbose=1, callbacks=callbacks)
