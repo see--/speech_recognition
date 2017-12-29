@@ -771,7 +771,7 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11, filter_mult=1):
 
   model = Model(input_layer, x, name='conv_1d_time_sliced')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=1e-3),
+      optimizer=keras.optimizers.SGD(lr=1e-3, momentum=0.95),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
