@@ -807,6 +807,20 @@ def conv_1d_time_sliced_with_attention_model(
     x = _context_conv(x, num_filters, k, padding='valid')
     return x
 
+  def _residual_block(x, num_filters, k, strides=1, padding='same'):
+    if strides != 1:
+      residual = Conv1D(
+          num_filters, 1, strides=strides, padding='same', use_bias=False)(x)
+      residual = BatchNormalization()(residual)
+    else:
+      residual = x
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding='same', use_bias=False)
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding='same', use_bias=False)
+    x = MaxPool1D(pool_size=3, strides=strides, padding='same')(x)
+    return Add()([x, residual])
+
   x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
   # default conv
   x = Conv1D(64 * filter_mult, 3, strides=2, use_bias=False,
@@ -815,20 +829,17 @@ def conv_1d_time_sliced_with_attention_model(
   x = Activation(relu6)(x)
   # depthwise conv
   x = _context_conv(x, 128 * filter_mult, 3)
-  x = _reduce_block(x, 192 * filter_mult, 3)
-  x = _reduce_block(x, 256 * filter_mult, 3)
-  x = _reduce_block(x, 320 * filter_mult, 3)
-  x = _reduce_block(x, 384 * filter_mult, 3)
-  x = _reduce_block(x, 512 * filter_mult, 3)
+  for num_filter in [256, 320, 448, 640, 1024]:
+    x = _residual_block(x, num_filter, 3, strides=2)
+    x = _residual_block(x, num_filter, 3)
   # attention
   # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
-  attention = Dense(9, activation='softmax', use_bias=False,
-                    kernel_regularizer=l2(1e-5))(Flatten()(x))
-  attention = Lambda(lambda x: K.expand_dims(x, axis=-1))(attention)
+  attention = Conv1D(1, 1, kernel_regularizer=l2(1e-5), use_bias=False)(x)
+  attention = Lambda(lambda x: softmax(x, axis=-2))(attention)
   x = Multiply()([x, attention])
 
   x = GlobalAveragePooling1D()(x)
-  x = Dropout(0.4)(x)
+  x = Dropout(0.5)(x)
   x = Dense(num_classes, activation='softmax', use_bias=False,
             kernel_regularizer=l2(1e-5))(x)
 

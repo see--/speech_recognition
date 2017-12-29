@@ -19,7 +19,7 @@ def data_gen(audio_processor, sess,
              background_frequency=0.6, background_volume_range=0.2,
              foreground_frequency=0.6, foreground_volume_range=0.2,
              time_shift_frequency=0.6, time_shift_range=[-2000, 0],
-             mode='validation', pseudo_frequency=0.2):
+             mode='validation', pseudo_frequency=0.0):
   offset = 0
   if mode != 'training':
     background_frequency = 0.0
