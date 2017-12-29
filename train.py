@@ -59,8 +59,8 @@ if __name__ == '__main__':
           all_words=prepare_words_list(classes),
           label2int=ap.word_to_index),
       LearningRateScheduler(lambda ep: cyclic_schedule(ep, base_lr=1e-3)),
-      TensorBoard(log_dir='logs_137'),
-      ModelCheckpoint('checkpoints_137/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
+      TensorBoard(log_dir='logs_138'),
+      ModelCheckpoint('checkpoints_138/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
   model.fit_generator(
       train_gen, steps_per_epoch=ap.set_size('training') // batch_size,
       epochs=200, verbose=1, callbacks=callbacks)

@@ -1,14 +1,14 @@
 import tensorflow as tf
 
 
-def cyclic_schedule(epoch, base_lr=1e-3, epoch_stepsize=10):
+def cyclic_schedule(epoch, base_lr=1e-3, epoch_stepsize=20):
   cycle = epoch // epoch_stepsize
   cycle_epoch = epoch % epoch_stepsize
   for i in range(cycle):
-    base_lr *= 0.8
-  if cycle_epoch < 4:
+    base_lr *= 0.9
+  if cycle_epoch < 10:
     return base_lr
-  elif 4 <= cycle_epoch < 8:
+  elif 10 <= cycle_epoch < 15:
     return base_lr * 0.1
   else:
     return base_lr * 0.01
