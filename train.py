@@ -1,13 +1,13 @@
 from __future__ import division, print_function
 import tensorflow as tf
 from keras import backend as K
-from keras.callbacks import ModelCheckpoint, LearningRateScheduler
+from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau
 from keras.callbacks import TensorBoard
 from callbacks import ConfusionMatrixCallback
 from model import speech_model, prepare_model_settings
 from input_data import AudioProcessor, prepare_words_list
 from classes import get_classes
-from utils import data_gen, cyclic_schedule
+from utils import data_gen
 from IPython import embed  # noqa
 
 
@@ -58,9 +58,10 @@ if __name__ == '__main__':
           wanted_words=prepare_words_list(get_classes(wanted_only=True)),
           all_words=prepare_words_list(classes),
           label2int=ap.word_to_index),
-      LearningRateScheduler(lambda ep: cyclic_schedule(ep, base_lr=1e-3)),
-      TensorBoard(log_dir='logs_138'),
-      ModelCheckpoint('checkpoints_138/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
+      ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
+                        factor=0.7, patience=3, verbose=1),
+      TensorBoard(log_dir='logs_139'),
+      ModelCheckpoint('checkpoints_139/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
   model.fit_generator(
       train_gen, steps_per_epoch=ap.set_size('training') // batch_size,
       epochs=200, verbose=1, callbacks=callbacks)
