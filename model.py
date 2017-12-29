@@ -819,7 +819,7 @@ def conv_1d_time_sliced_with_attention_model(
   x = _reduce_block(x, 256 * filter_mult, 3)
   x = _reduce_block(x, 320 * filter_mult, 3)
   x = _reduce_block(x, 384 * filter_mult, 3)
-  x = _reduce_block(x, 448 * filter_mult, 3)
+  x = _reduce_block(x, 512 * filter_mult, 3)
   # attention
   # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
   attention = Dense(9, activation='softmax', use_bias=False,
