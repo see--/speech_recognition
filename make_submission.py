@@ -82,7 +82,7 @@ if __name__ == '__main__':
     X_batch = [[], []]
     X_tta_batch = [[], []]
 
-  for i in tqdm(range(len(test_fns[:]))):
+  for i in tqdm(range(len(test_fns[:10000]))):
     test_fn = test_fns[i]
     fns.append(os.path.basename(test_fn))
     feed_dict = {
@@ -97,6 +97,10 @@ if __name__ == '__main__':
       raw_val = sess.run(
           ap.background_clamp_, feed_dict=feed_dict).flatten()
       X_batch.append(raw_val)
+      if use_speed_tta:
+        raw_val = sess.run(
+            ap.background_clamp_, feed_dict=feed_dict).flatten()
+        X_tta_batch.append(raw_val)
     elif output_representation == 'spec':
       spec_val = sess.run(
           ap.spectrogram_, feed_dict=feed_dict).flatten()
@@ -139,9 +143,19 @@ if __name__ == '__main__':
         silent_probs = model.predict(0.9 * np.float32(X_batch))
         silent_probs2 = model.predict(0.75 * np.float32(X_batch))
 
-        probs = (probs +
-                 loud_probs + loud_probs2 + silent_probs + silent_probs2 +
-                 left_probs + left_probs2 + left_probs3 + left_probs4) / 9
+        if use_speed_tta:
+          slow_probs = model.predict(np.float32(X_tta_batch))
+          slow_loud_probs = model.predict(1.1 * np.float32(X_tta_batch))
+          slow_silent_probs = model.predict(0.9 * np.float32(X_tta_batch))
+
+          probs = (probs +
+                   loud_probs + loud_probs2 + silent_probs + silent_probs2 +
+                   left_probs + left_probs2 + left_probs3 + left_probs4 +
+                   slow_probs + slow_loud_probs + slow_silent_probs) / 12
+        else:
+          probs = (probs +
+                   loud_probs + loud_probs2 + silent_probs + silent_probs2 +
+                   left_probs + left_probs2 + left_probs3 + left_probs4) / 9
 
       pred = probs.argmax(axis=-1)
       probabilities.append(probs)
@@ -184,9 +198,19 @@ if __name__ == '__main__':
       silent_probs = model.predict(0.9 * np.float32(X_batch))
       silent_probs2 = model.predict(0.75 * np.float32(X_batch))
 
-      probs = (probs +
-               loud_probs + loud_probs2 + silent_probs + silent_probs2 +
-               left_probs + left_probs2 + left_probs3 + left_probs4) / 9
+      if use_speed_tta:
+        slow_probs = model.predict(np.float32(X_tta_batch))
+        slow_loud_probs = model.predict(1.1 * np.float32(X_tta_batch))
+        slow_silent_probs = model.predict(0.9 * np.float32(X_tta_batch))
+
+        probs = (probs +
+                 loud_probs + loud_probs2 + silent_probs + silent_probs2 +
+                 left_probs + left_probs2 + left_probs3 + left_probs4 +
+                 slow_probs + slow_loud_probs + slow_silent_probs) / 12
+      else:
+        probs = (probs +
+                 loud_probs + loud_probs2 + silent_probs + silent_probs2 +
+                 left_probs + left_probs2 + left_probs3 + left_probs4) / 9
 
     pred = probs.argmax(axis=-1)
     probabilities.append(probs)
