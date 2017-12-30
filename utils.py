@@ -16,10 +16,10 @@ def cyclic_schedule(epoch, base_lr=1e-3, epoch_stepsize=20):
 
 def data_gen(audio_processor, sess,
              batch_size=128,
-             background_frequency=0.6, background_volume_range=0.2,
-             foreground_frequency=0.6, foreground_volume_range=0.2,
-             time_shift_frequency=0.6, time_shift_range=[-2000, 0],
-             mode='validation', pseudo_frequency=0.0):
+             background_frequency=0.666, background_volume_range=0.2,
+             foreground_frequency=0.666, foreground_volume_range=0.2,
+             time_shift_frequency=0.666, time_shift_range=[-2000, 0],
+             mode='validation', pseudo_frequency=0.333):
   offset = 0
   if mode != 'training':
     background_frequency = 0.0

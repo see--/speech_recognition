@@ -26,7 +26,7 @@ if __name__ == '__main__':
   sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
   K.set_session(sess)
   data_dirs = ['data/train/audio']
-  add_pseudo = False
+  add_pseudo = True
   if add_pseudo:
     data_dirs.append('data/pseudo/audio')
   output_representation = 'raw'
@@ -59,9 +59,9 @@ if __name__ == '__main__':
           all_words=prepare_words_list(classes),
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
-                        factor=0.7, patience=3, verbose=1),
-      TensorBoard(log_dir='logs_142'),
-      ModelCheckpoint('checkpoints_142/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
+                        factor=0.7, patience=3, verbose=1, min_lr=1e-5),
+      TensorBoard(log_dir='logs_143'),
+      ModelCheckpoint('checkpoints_143/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
   model.fit_generator(
       train_gen, steps_per_epoch=ap.set_size('training') // batch_size,
       epochs=200, verbose=1, callbacks=callbacks)
