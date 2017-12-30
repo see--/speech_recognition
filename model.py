@@ -758,8 +758,8 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11, filter_mult=1):
   x = _reduce_block(x, 128 * filter_mult, 3)
   x = _reduce_block(x, 192 * filter_mult, 3)
   x = _reduce_block(x, 256 * filter_mult, 3)
+  x = _reduce_block(x, 320 * filter_mult, 3)
   x = _reduce_block(x, 384 * filter_mult, 3)
-  x = _reduce_block(x, 448 * filter_mult, 3)
   x = _reduce_block(x, 512 * filter_mult, 3)
   x = GlobalAveragePooling1D()(x)
   x = Dropout(0.4)(x)
@@ -771,7 +771,7 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11, filter_mult=1):
 
   model = Model(input_layer, x, name='conv_1d_time_sliced')
   model.compile(
-      optimizer=keras.optimizers.Adam(lr=1e-3),
+      optimizer=keras.optimizers.RMSprop(lr=1e-3),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
@@ -793,7 +793,8 @@ def conv_1d_time_sliced_with_attention_model(
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
     x = _depthwise_conv_block(
-        x, num_filters, k, padding=padding, use_bias=False, strides=strides)
+        x, num_filters, k, padding=padding, use_bias=False)
+    x = MaxPool1D(pool_size=3, strides=strides, padding='same')(x)
     return x
 
   def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
@@ -807,21 +808,6 @@ def conv_1d_time_sliced_with_attention_model(
     x = _context_conv(x, num_filters, k, padding='valid')
     return x
 
-  def _residual_block(x, num_filters, k, strides=1, padding='same'):
-    if strides != 1:
-      residual = Conv1D(
-          num_filters, 1, strides=strides, padding='same', use_bias=False)(x)
-      residual = BatchNormalization()(residual)
-    else:
-      residual = x
-    x = _depthwise_conv_block(
-        x, num_filters, k, padding='same', use_bias=False)
-    x = _depthwise_conv_block(
-        x, num_filters, k, padding='same', use_bias=False)
-    if strides != 1:
-      x = MaxPool1D(pool_size=3, strides=strides, padding='same')(x)
-    return Add()([x, residual])
-
   x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
   # default conv
   x = Conv1D(64 * filter_mult, 3, strides=2, use_bias=False,
@@ -830,18 +816,19 @@ def conv_1d_time_sliced_with_attention_model(
   x = Activation(relu6)(x)
   # depthwise conv
   x = _context_conv(x, 128 * filter_mult, 3)
-  for num_filter in [256, 320, 448, 640, 1024]:
-    x = _residual_block(x, num_filter, 3, strides=2)
-    x = _residual_block(x, num_filter, 3)
-  # attention
-  # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
-  attention = Conv1D(1, 1, kernel_regularizer=l2(1e-5), use_bias=False)(x)
-  attention = Lambda(lambda x: softmax(x, axis=-2))(attention)
-  x = Multiply()([x, attention])
-
+  x = _reduce_block(x, 192 * filter_mult, 3)
+  x = _reduce_block(x, 256 * filter_mult, 3)
+  x = _reduce_block(x, 320 * filter_mult, 3)
+  x = _reduce_block(x, 448 * filter_mult, 3)
+  x = _reduce_block(x, 512 * filter_mult, 3)
+  x = _reduce_block(x, 768 * filter_mult, 3)
   x = GlobalAveragePooling1D()(x)
-  x = Dropout(0.5)(x)
-  x = Dense(num_classes, activation='softmax', use_bias=False,
+  x = Dropout(0.4)(x)
+  x = Dense(256, kernel_regularizer=l2(1e-5))(x)
+  x = BatchNormalization()(x)
+  x = Activation(relu6)(x)
+  x = Dropout(0.2)(x)
+  x = Dense(num_classes, activation='softmax',
             kernel_regularizer=l2(1e-5))(x)
 
   model = Model(input_layer, x, name='conv_1d_time_sliced_with_attention')

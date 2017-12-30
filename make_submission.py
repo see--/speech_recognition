@@ -119,6 +119,7 @@ if __name__ == '__main__':
       else:
         X_arr = [np.float32(X_batch[0]), np.float32(X_batch[1])]
         probs = model.predict(X_arr)
+
       if use_tta:
         X_batch_left = np.roll(np.float32(X_batch), -500, axis=1)
         left_probs = model.predict(X_batch_left)
@@ -129,10 +130,18 @@ if __name__ == '__main__':
         X_batch_left = np.roll(np.float32(X_batch), -2000, axis=1)
         left_probs3 = model.predict(X_batch_left)
 
-        loud_probs = model.predict(1.2 * np.float32(X_batch))
-        silent_probs = model.predict(0.8 * np.float32(X_batch))
-        probs = (probs + loud_probs + silent_probs + left_probs +
-                 left_probs2) / 6
+        X_batch_left = np.roll(np.float32(X_batch), -2500, axis=1)
+        left_probs4 = model.predict(X_batch_left)
+
+        loud_probs = model.predict(1.1 * np.float32(X_batch))
+        loud_probs2 = model.predict(1.25 * np.float32(X_batch))
+
+        silent_probs = model.predict(0.9 * np.float32(X_batch))
+        silent_probs2 = model.predict(0.75 * np.float32(X_batch))
+
+        probs = (probs +
+                 loud_probs + loud_probs2 + silent_probs + silent_probs2 +
+                 left_probs + left_probs2 + left_probs3 + left_probs4) / 9
 
       pred = probs.argmax(axis=-1)
       probabilities.append(probs)
@@ -166,10 +175,18 @@ if __name__ == '__main__':
       X_batch_left = np.roll(np.float32(X_batch), -2000, axis=1)
       left_probs3 = model.predict(X_batch_left)
 
-      loud_probs = model.predict(1.2 * np.float32(X_batch))
-      silent_probs = model.predict(0.8 * np.float32(X_batch))
-      probs = (probs + loud_probs + silent_probs + left_probs +
-               left_probs2) / 6
+      X_batch_left = np.roll(np.float32(X_batch), -2500, axis=1)
+      left_probs4 = model.predict(X_batch_left)
+
+      loud_probs = model.predict(1.1 * np.float32(X_batch))
+      loud_probs2 = model.predict(1.25 * np.float32(X_batch))
+
+      silent_probs = model.predict(0.9 * np.float32(X_batch))
+      silent_probs2 = model.predict(0.75 * np.float32(X_batch))
+
+      probs = (probs +
+               loud_probs + loud_probs2 + silent_probs + silent_probs2 +
+               left_probs + left_probs2 + left_probs3 + left_probs4) / 9
 
     pred = probs.argmax(axis=-1)
     probabilities.append(probs)
@@ -181,11 +198,11 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_135_tta_sllll.csv',
+      'submission_135_tta_sslllll.csv',
       index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_135_tta_sllll_all_labels.csv',
+      'submission_135_tta_sslllll_all_labels.csv',
       index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
@@ -193,6 +210,6 @@ if __name__ == '__main__':
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_135_tta_sllll_all_labels_probs.csv',
+      'submission_135_tta_sslllll_all_labels_probs.csv',
       index=False, compression=None)
   print("Done!")

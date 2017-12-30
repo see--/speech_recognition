@@ -1,25 +1,12 @@
 import tensorflow as tf
 
 
-def cyclic_schedule(epoch, base_lr=1e-3, epoch_stepsize=20):
-  cycle = epoch // epoch_stepsize
-  cycle_epoch = epoch % epoch_stepsize
-  for i in range(cycle):
-    base_lr *= 0.9
-  if cycle_epoch < 10:
-    return base_lr
-  elif 10 <= cycle_epoch < 15:
-    return base_lr * 0.1
-  else:
-    return base_lr * 0.01
-
-
 def data_gen(audio_processor, sess,
              batch_size=128,
-             background_frequency=0.666, background_volume_range=0.2,
-             foreground_frequency=0.666, foreground_volume_range=0.2,
-             time_shift_frequency=0.666, time_shift_range=[-2000, 0],
-             mode='validation', pseudo_frequency=0.333):
+             background_frequency=0.66, background_volume_range=0.2,
+             foreground_frequency=0.66, foreground_volume_range=0.2,
+             time_shift_frequency=0.66, time_shift_range=[-2000, 0],
+             mode='validation', pseudo_frequency=0.33):
   offset = 0
   if mode != 'training':
     background_frequency = 0.0
