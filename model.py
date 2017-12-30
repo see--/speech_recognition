@@ -818,7 +818,8 @@ def conv_1d_time_sliced_with_attention_model(
         x, num_filters, k, padding='same', use_bias=False)
     x = _depthwise_conv_block(
         x, num_filters, k, padding='same', use_bias=False)
-    x = MaxPool1D(pool_size=3, strides=strides, padding='same')(x)
+    if strides != 1:
+      x = MaxPool1D(pool_size=3, strides=strides, padding='same')(x)
     return Add()([x, residual])
 
   x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
