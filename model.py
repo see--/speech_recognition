@@ -830,7 +830,7 @@ def conv_1d_time_sliced_with_attention_model(
 
   model = Model(input_layer, x, name='conv_1d_time_sliced_with_attention')
   model.compile(
-      optimizer=keras.optimizers.Adam(lr=1e-3),
+      optimizer=keras.optimizers.Nadam(lr=2e-3),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
