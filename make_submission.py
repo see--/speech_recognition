@@ -43,7 +43,7 @@ if __name__ == '__main__':
   K.set_learning_phase(0)
   sample_rate = 16000
   use_tta = True
-  use_speed_tta = True
+  use_speed_tta = False
   wanted_only = False
   extend_reversed = False
   output_representation = 'raw'
@@ -128,17 +128,11 @@ if __name__ == '__main__':
         X_batch_left = np.roll(np.float32(X_batch), -500, axis=1)
         left_probs = model.predict(X_batch_left)
 
-        X_batch_left = np.roll(np.float32(X_batch), -1500, axis=1)
-        left_probs2 = model.predict(X_batch_left)
-
         loud_probs = model.predict(
             np.clip(1.1 * np.float32(X_batch), -1.0, 1.0))
-        loud_probs2 = model.predict(
-            np.clip(1.25 * np.float32(X_batch), -1.0, 1.0))
 
         silent_probs = model.predict(0.9 * np.float32(X_batch))
-        silent_probs2 = model.predict(0.75 * np.float32(X_batch))
-
+        flipped_probs = model.predict(-1.0 * np.float32(X_batch))
         if use_speed_tta:
           slow_probs = model.predict(np.float32(X_tta_batch))
           slow_loud_probs = model.predict(
@@ -146,13 +140,13 @@ if __name__ == '__main__':
           slow_silent_probs = model.predict(0.9 * np.float32(X_tta_batch))
 
           probs = (probs +
-                   loud_probs + loud_probs2 + silent_probs + silent_probs2 +
-                   left_probs + left_probs2 +
+                   loud_probs + silent_probs +
+                   left_probs +
                    slow_probs + slow_loud_probs + slow_silent_probs) / 10
         else:
-          probs = (probs +
-                   loud_probs + loud_probs2 + silent_probs + silent_probs2 +
-                   left_probs + left_probs2) / 7
+          probs = (probs + flipped_probs +
+                   loud_probs + silent_probs +
+                   left_probs) / 5
 
       pred = probs.argmax(axis=-1)
       probabilities.append(probs)
@@ -180,17 +174,11 @@ if __name__ == '__main__':
       X_batch_left = np.roll(np.float32(X_batch), -500, axis=1)
       left_probs = model.predict(X_batch_left)
 
-      X_batch_left = np.roll(np.float32(X_batch), -1500, axis=1)
-      left_probs2 = model.predict(X_batch_left)
-
       loud_probs = model.predict(
           np.clip(1.1 * np.float32(X_batch), -1.0, 1.0))
-      loud_probs2 = model.predict(
-          np.clip(1.25 * np.float32(X_batch), -1.0, 1.0))
 
       silent_probs = model.predict(0.9 * np.float32(X_batch))
-      silent_probs2 = model.predict(0.75 * np.float32(X_batch))
-
+      flipped_probs = model.predict(-1.0 * np.float32(X_batch))
       if use_speed_tta:
         slow_probs = model.predict(np.float32(X_tta_batch))
         slow_loud_probs = model.predict(
@@ -198,13 +186,13 @@ if __name__ == '__main__':
         slow_silent_probs = model.predict(0.9 * np.float32(X_tta_batch))
 
         probs = (probs +
-                 loud_probs + loud_probs2 + silent_probs + silent_probs2 +
-                 left_probs + left_probs2 +
+                 loud_probs + silent_probs +
+                 left_probs +
                  slow_probs + slow_loud_probs + slow_silent_probs) / 10
       else:
-        probs = (probs +
-                 loud_probs + loud_probs2 + silent_probs + silent_probs2 +
-                 left_probs + left_probs2) / 7
+        probs = (probs + flipped_probs +
+                 loud_probs + silent_probs +
+                 left_probs) / 5
 
     pred = probs.argmax(axis=-1)
     probabilities.append(probs)
@@ -216,11 +204,11 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_106_tta_slowslllll.csv',
+      'submission_106_tta_flsl.csv',
       index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_106_tta_slowslllll_all_labels.csv',
+      'submission_106_tta_flsl_all_labels.csv',
       index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
@@ -228,6 +216,6 @@ if __name__ == '__main__':
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_106_tta_slowslllll_all_labels_probs.csv',
+      'submission_106_tta_flsl_all_labels_probs.csv',
       index=False, compression=None)
   print("Done!")
