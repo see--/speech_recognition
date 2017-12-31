@@ -43,7 +43,7 @@ SILENCE_INDEX = 0
 UNKNOWN_WORD_LABEL = '_unknown_'
 UNKNOWN_WORD_INDEX = 1
 BACKGROUND_NOISE_DIR_NAME = '_background_noise_'
-RANDOM_SEED = 42
+RANDOM_SEED = 13
 
 
 def prepare_words_list(wanted_words):
