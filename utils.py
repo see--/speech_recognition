@@ -6,7 +6,7 @@ def data_gen(audio_processor, sess,
              background_frequency=0.66, background_volume_range=0.2,
              foreground_frequency=0.66, foreground_volume_range=0.2,
              time_shift_frequency=0.66, time_shift_range=[-1000, 0],
-             mode='validation', pseudo_frequency=0.33):
+             mode='validation', pseudo_frequency=0.33, flip_frequency=0.5):
   offset = 0
   if mode != 'training':
     background_frequency = 0.0
@@ -16,6 +16,7 @@ def data_gen(audio_processor, sess,
     pseudo_frequency = 0.0
     time_shift_frequency = 0.0
     time_shift_range = [0, 0]
+    flip_frequency = 0.0
   while True:
     X, y = audio_processor.get_data(
         how_many=batch_size, offset=0 if mode == 'training' else offset,
@@ -26,7 +27,8 @@ def data_gen(audio_processor, sess,
         time_shift_frequency=time_shift_frequency,
         time_shift_range=time_shift_range,
         mode=mode, sess=sess,
-        pseudo_frequency=pseudo_frequency)
+        pseudo_frequency=pseudo_frequency,
+        flip_frequency=flip_frequency)
     offset += batch_size
     if offset > audio_processor.set_size(mode) - batch_size:
       offset = 0

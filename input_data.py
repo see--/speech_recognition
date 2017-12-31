@@ -43,7 +43,7 @@ SILENCE_INDEX = 0
 UNKNOWN_WORD_LABEL = '_unknown_'
 UNKNOWN_WORD_INDEX = 1
 BACKGROUND_NOISE_DIR_NAME = '_background_noise_'
-RANDOM_SEED = 13
+RANDOM_SEED = 59185
 
 
 def prepare_words_list(wanted_words):
@@ -391,7 +391,8 @@ class AudioProcessor(object):
                background_frequency, background_volume_range,
                foreground_frequency, foreground_volume_range,
                time_shift_frequency, time_shift_range,
-               mode, sess, pseudo_frequency=0.0):
+               mode, sess,
+               pseudo_frequency=0.0, flip_frequency=0.0):
     """Gather samples from the data set, applying transformations as needed.
 
     When the mode is 'training', a random selection of samples will be
@@ -493,12 +494,15 @@ class AudioProcessor(object):
         input_dict[self.foreground_volume_placeholder_] = 0.0
       else:
         # Turn it up or down
+        foreground_volume = 1.0
         if np.random.uniform(0, 1) < foreground_frequency:
           foreground_volume = 1.0 + np.random.uniform(
               -foreground_volume_range, foreground_volume_range)
-          input_dict[self.foreground_volume_placeholder_] = foreground_volume
-        else:
-          input_dict[self.foreground_volume_placeholder_] = 1.0
+        # flip sign
+        if np.random.uniform(0, 1) < flip_frequency:
+          foreground_volume *= -1.0
+        input_dict[self.foreground_volume_placeholder_] = foreground_volume
+
       # Run the graph to produce the output audio.
       if self.output_representation == 'raw':
         data[i - offset, :] = sess.run(
