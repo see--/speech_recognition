@@ -37,13 +37,14 @@ def map_to_wanted(labels, wanted_words):
 
 if __name__ == '__main__':
   test_fns = sorted(glob('data/test/audio/*.wav'))
-  tta_fns = sorted(glob('data/tta_test/audio/*.wav'))
-  assert len(test_fns) == len(tta_fns)
   sess = K.get_session()
   K.set_learning_phase(0)
   sample_rate = 16000
   use_tta = True
   use_speed_tta = False
+  if use_speed_tta:
+    tta_fns = sorted(glob('data/tta_test/audio/*.wav'))
+    assert len(test_fns) == len(tta_fns)
   wanted_only = False
   extend_reversed = False
   output_representation = 'raw'
@@ -64,7 +65,7 @@ if __name__ == '__main__':
       validation_percentage=10.0, testing_percentage=0.0,
       model_settings=model_settings,
       output_representation=output_representation)
-  model = load_model('checkpoints_106/ep-062-vl-0.1815.hdf5',
+  model = load_model('checkpoints_151/ep-043-vl-0.1698.hdf5',
                      custom_objects={'relu6': relu6,
                                      'DepthwiseConv2D': DepthwiseConv2D,
                                      'overlapping_time_slice_stack':
@@ -204,11 +205,11 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_106_tta_flsl.csv',
+      'submission_151_tta_flsl.csv',
       index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_106_tta_flsl_all_labels.csv',
+      'submission_151_tta_flsl_all_labels.csv',
       index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
@@ -216,6 +217,6 @@ if __name__ == '__main__':
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_106_tta_flsl_all_labels_probs.csv',
+      'submission_151_tta_flsl_all_labels_probs.csv',
       index=False, compression=None)
   print("Done!")
