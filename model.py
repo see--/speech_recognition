@@ -33,7 +33,7 @@ PreprocessRaw = Lambda(preprocess_raw)
 
 
 def relu6(x):
-  return K.relu(x, max_value=6)
+  return K.relu(x, max_value=8)
 
 
 def _depthwise_conv_block(
@@ -808,22 +808,25 @@ def conv_1d_time_sliced_with_attention_model(
     return x
 
   x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
-  x = _reduce_block(x, 128 * filter_mult, 3)
-  x = _reduce_block(x, 192 * filter_mult, 3)
-  x = _reduce_block(x, 256 * filter_mult, 3)
+  # timestep representation
+  x = Conv1D(64, 1, kernel_regularizer=l2(1e-5))(x)
+  x = BatchNormalization()(x)
+  x = Activation(relu6)(x)
+  x = _reduce_block(x, 96 * filter_mult, 7)
+  x = _reduce_block(x, 192 * filter_mult, 5)
+  x = _reduce_block(x, 256 * filter_mult, 5)
   x = _reduce_block(x, 320 * filter_mult, 3)
   x = _reduce_block(x, 384 * filter_mult, 3)
   x = _reduce_block(x, 448 * filter_mult, 3)
-  x = _reduce_conv(x, 512 * filter_mult, 3, padding='same')
   # attention
   # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
-  attention = Dense(5, activation='softmax', use_bias=False,
+  attention = Dense(9, activation='softmax', use_bias=False,
                     kernel_regularizer=l2(1e-5))(Flatten()(x))
   attention = Lambda(lambda x: K.expand_dims(x, axis=-1))(attention)
   x = Multiply()([x, attention])
 
   x = GlobalAveragePooling1D()(x)
-  x = Dropout(0.4)(x)
+  x = Dropout(0.2)(x)
   x = Dense(num_classes, activation='softmax', use_bias=False,
             kernel_regularizer=l2(1e-5))(x)
 
