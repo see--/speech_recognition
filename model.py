@@ -808,10 +808,11 @@ def conv_1d_time_sliced_with_attention_model(
     x = _context_conv(x, num_filters, k, padding='valid')
     return x
 
-  x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
+  x = Lambda(lambda x: overlapping_time_slice_stack(x, 30, 20))(x)
   # timestep representation
   x = Conv1D(96 * filter_mult, 1, kernel_regularizer=l2(1e-5))(x)
-  x = BatchNormalization()(Activation(relu6)(x))
+  x = BatchNormalization()(x)
+  x = Activation(relu6)(x)
   # reduce blocks
   x = _reduce_block(x, 128 * filter_mult, 3)
   x = _reduce_block(x, 256 * filter_mult, 3)
@@ -822,7 +823,7 @@ def conv_1d_time_sliced_with_attention_model(
   # attention
   # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
   attention = Dropout(0.2)(x)
-  attention = _context_conv(attention, 1, 3, padding='same')
+  attention = _context_conv(attention, 1, 5, padding='same')
   attention = Lambda(lambda x: softmax(x, axis=-2))(attention)
   x = Multiply()([x, attention])
 
