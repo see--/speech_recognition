@@ -817,17 +817,31 @@ def conv_1d_time_sliced_with_attention_model(
   x = _reduce_block(x, 128 * filter_mult, 3)
   x = _reduce_block(x, 256 * filter_mult, 3)
   x = _reduce_block(x, 320 * filter_mult, 3)
-  x = _reduce_block(x, 448 * filter_mult, 3)
-  x = _reduce_block(x, 512 * filter_mult, 3)
-  # attention
-  # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
-  attention = Dropout(0.5)(x)
-  attention = _context_conv(attention, 1, 5, padding='same')
-  attention = Lambda(lambda x: softmax(x, axis=-2))(attention)
-  x = Multiply()([x, attention])
+  x = _reduce_block(x, 384 * filter_mult, 3)
+  x22 = _reduce_block(x, 448 * filter_mult, 3)
+  x9 = _reduce_block(x22, 512 * filter_mult, 3)
 
-  x = GlobalAveragePooling1D()(x)
-  x = Dropout(0.5)(x)
+  # attention @ 22 timesteps
+  # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
+  attention22 = Dropout(0.2)(x22)
+  attention22 = _context_conv(attention22, 1, 5, padding='same')
+  attention22 = Lambda(lambda x: softmax(x, axis=-2))(attention22)
+  x22 = Multiply()([x22, attention22])
+  x22 = GlobalAveragePooling1D()(x22)
+
+  # attention @ 9 timesteps
+  # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
+  attention9 = Dropout(0.2)(x9)
+  attention9 = _context_conv(attention9, 1, 3, padding='same')
+  attention9 = Lambda(lambda x: softmax(x, axis=-2))(attention9)
+  x9 = Multiply()([x9, attention9])
+  x9 = GlobalAveragePooling1D()(x9)
+
+  x = Concatenate()([x22, x9])
+  x = Dropout(0.2)(x)
+  x = Dense(256, activation='relu', use_bias=False,
+            kernel_regularizer=l2(1e-5))(x)
+  x = Dropout(0.2)(x)
   x = Dense(num_classes, activation='softmax', use_bias=False,
             kernel_regularizer=l2(1e-5))(x)
 
