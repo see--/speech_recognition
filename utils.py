@@ -3,9 +3,9 @@ import tensorflow as tf
 
 def data_gen(audio_processor, sess,
              batch_size=128,
-             background_frequency=0.8, background_volume_range=0.3,
-             foreground_frequency=0.8, foreground_volume_range=0.3,
-             time_shift_frequency=0.8, time_shift_range=[-500, 100],
+             background_frequency=0.8, background_volume_range=0.25,
+             foreground_frequency=0.8, foreground_volume_range=0.15,
+             time_shift_frequency=0.8, time_shift_range=[-700, 0],
              mode='validation', pseudo_frequency=0.1, flip_frequency=0.5):
   offset = 0
   if mode != 'training':

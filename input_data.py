@@ -484,6 +484,10 @@ class AudioProcessor(object):
           background_volume = np.random.uniform(0, background_volume_range)
         else:
           background_volume = 0.0
+          # silence class with all zeros is boring!
+          if sample['label'] == SILENCE_LABEL and \
+             np.random.uniform(0, 1) < 0.9:
+            background_volume = np.random.uniform(0, background_volume_range)
       else:
         background_reshaped = np.zeros([desired_samples, 1])
         background_volume = 0.0
