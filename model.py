@@ -809,6 +809,10 @@ def conv_1d_time_sliced_with_attention_model(
     return x
 
   x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
+  # timestep representation
+  x = Conv1D(96 * filter_mult, 1, kernel_regularizer=l2(1e-5))(x)
+  x = BatchNormalization()(Activation(relu6)(x))
+  # reduce blocks
   x = _reduce_block(x, 128 * filter_mult, 3)
   x = _reduce_block(x, 256 * filter_mult, 3)
   x = _reduce_block(x, 320 * filter_mult, 3)
@@ -817,20 +821,19 @@ def conv_1d_time_sliced_with_attention_model(
   x = _reduce_block(x, 512 * filter_mult, 3)
   # attention
   # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
-  attention = Dropout(0.4)(Flatten()(x))
-  attention = Dense(9, activation='softmax', use_bias=False,
-                    kernel_regularizer=l2(1e-5))(attention)
-  attention = Lambda(lambda x: K.expand_dims(x, axis=-1))(attention)
+  attention = Dropout(0.2)(x)
+  attention = _context_conv(attention, 1, 3, padding='same')
+  attention = Lambda(lambda x: softmax(x, axis=-2))(attention)
   x = Multiply()([x, attention])
 
   x = GlobalAveragePooling1D()(x)
-  x = Dropout(0.3)(x)
+  x = Dropout(0.2)(x)
   x = Dense(num_classes, activation='softmax', use_bias=False,
             kernel_regularizer=l2(1e-5))(x)
 
   model = Model(input_layer, x, name='conv_1d_time_sliced_with_attention')
   model.compile(
-      optimizer=keras.optimizers.Nadam(lr=2e-3),
+      optimizer=keras.optimizers.RMSprop(lr=1e-3),
       loss=keras.losses.categorical_crossentropy,
       metrics=[keras.metrics.categorical_accuracy])
   return model
