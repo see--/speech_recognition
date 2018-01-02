@@ -802,31 +802,27 @@ def conv_1d_time_sliced_with_attention_model(
         use_bias=False)
     return x
 
-  def _reduce_block(x, num_filters, k):
-    x = _reduce_conv(x, num_filters, k, padding='same')
-    # x = _context_conv(x, num_filters, k, padding='valid')
+  def _reduce_block(x, num_filters, k_reduce, k_context=3):
+    x = _reduce_conv(x, num_filters, k_reduce, padding='same')
+    x = _context_conv(x, num_filters, k_context, padding='valid')
     return x
 
   x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
   # timestep represenation
-  x = Conv1D(64 * filter_mult, 3, strides=2, use_bias=False,
+  x = Conv1D(64 * filter_mult, 7, strides=2, use_bias=False,
              kernel_regularizer=l2(1e-5))(x)
   x = BatchNormalization()(x)
   x = Activation(relu6)(x)
   # depthwise conv
-  x = _context_conv(x, 128 * filter_mult, 3)
-  x = _reduce_block(x, 192 * filter_mult, 3)
+  x = _context_conv(x, 96 * filter_mult, 7)
+  x = _reduce_block(x, 128 * filter_mult, 5)
+  x = _reduce_block(x, 192 * filter_mult, 5)
   x = _reduce_block(x, 256 * filter_mult, 3)
   x = _reduce_block(x, 320 * filter_mult, 3)
   x = _reduce_block(x, 384 * filter_mult, 3)
-  x = _reduce_block(x, 448 * filter_mult, 3)
-  x = _reduce_conv(x, 640 * filter_mult, 3, padding='same')
+  x = _reduce_conv(x, 512 * filter_mult, 3, padding='same')
   x = Flatten()(x)
   x = Dropout(0.4)(x)
-  x = Dense(512, use_bias=False, kernel_regularizer=l2(1e-5))(x)
-  x = BatchNormalization()(x)
-  x = Activation(relu6)(x)
-  x = Dropout(0.2)(x)
   x = Dense(num_classes, activation='softmax', use_bias=False,
             kernel_regularizer=l2(1e-5))(x)
 
