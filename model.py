@@ -822,7 +822,7 @@ def conv_1d_time_sliced_with_attention_model(
   x = _reduce_block(x, 384 * filter_mult, 3)
   x = _reduce_conv(x, 512 * filter_mult, 3, padding='same')
   x = Flatten()(x)
-  x = Dropout(0.4)(x)
+  x = Dropout(0.3)(x)
   x = Dense(num_classes, activation='softmax', use_bias=False,
             kernel_regularizer=l2(1e-5))(x)
 

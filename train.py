@@ -32,7 +32,7 @@ if __name__ == '__main__':
   output_representation = 'raw'
   sample_rate = 16000
   batch_size = 384
-  classes = get_classes(wanted_only=False, extend_reversed=False)
+  classes = get_classes(wanted_only=True, extend_reversed=False)
   model_settings = prepare_model_settings(
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
       clip_duration_ms=1000, window_size_ms=30.0, window_stride_ms=10.0,
@@ -40,7 +40,7 @@ if __name__ == '__main__':
       output_representation=output_representation)
   ap = AudioProcessor(
       data_dirs=data_dirs, wanted_words=classes,
-      silence_percentage=15.0, unknown_percentage=5.0,
+      silence_percentage=12.0, unknown_percentage=50.0,
       validation_percentage=10.0, testing_percentage=0.0,
       model_settings=model_settings,
       output_representation=output_representation)
@@ -51,7 +51,7 @@ if __name__ == '__main__':
       model_settings['fingerprint_size'] if output_representation != 'raw' else model_settings['desired_samples'],  # noqa
       num_classes=model_settings['label_count'],
       **model_settings)
-  # embed()
+  embed()
   callbacks = [
       ConfusionMatrixCallback(
           val_gen, ap.set_size('validation') // batch_size,
@@ -60,8 +60,8 @@ if __name__ == '__main__':
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=5, verbose=1, min_lr=5e-5),
-      TensorBoard(log_dir='logs_163'),
-      ModelCheckpoint('checkpoints_163/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
+      TensorBoard(log_dir='logs_164'),
+      ModelCheckpoint('checkpoints_164/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
   model.fit_generator(
       train_gen, steps_per_epoch=ap.set_size('training') // batch_size,
       epochs=100, verbose=1, callbacks=callbacks)
