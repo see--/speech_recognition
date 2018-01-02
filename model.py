@@ -804,7 +804,7 @@ def conv_1d_time_sliced_with_attention_model(
 
   def _reduce_block(x, num_filters, k):
     x = _reduce_conv(x, num_filters, k, padding='same')
-    x = _context_conv(x, num_filters, k, padding='valid')
+    # x = _context_conv(x, num_filters, k, padding='valid')
     return x
 
   x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
@@ -823,6 +823,10 @@ def conv_1d_time_sliced_with_attention_model(
   x = _reduce_conv(x, 640 * filter_mult, 3, padding='same')
   x = Flatten()(x)
   x = Dropout(0.4)(x)
+  x = Dense(512, use_bias=False, kernel_regularizer=l2(1e-5))(x)
+  x = BatchNormalization()(x)
+  x = Activation(relu6)(x)
+  x = Dropout(0.2)(x)
   x = Dense(num_classes, activation='softmax', use_bias=False,
             kernel_regularizer=l2(1e-5))(x)
 
