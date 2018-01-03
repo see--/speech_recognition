@@ -1668,6 +1668,78 @@ def conv_1d_mfcc_and_raw_model(
   return model
 
 
+def steffen(input_size=16000, num_classes=11, *args, **kwargs):
+  """ Creates a 1D model for temporal data. Note: Use only
+  with compute_mfcc = False (e.g. raw waveform data).
+  Args:
+    input_size: How big the input vector is.
+    num_classes: How many classes are to be recognized.
+  Returns:
+    Compiled keras model
+  """
+  def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding=padding, use_bias=False, strides=strides)
+    return x
+
+  def _context_conv(x, num_filters, k, dilation_rate=1, padding='valid'):
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding=padding, dilation_rate=dilation_rate,
+        use_bias=False)
+    return x
+
+  def _reduce_block(x, num_filters, k):
+    x = _reduce_conv(x, num_filters, k, padding='same')
+    x = _context_conv(x, num_filters, k, padding='valid')
+    return x
+
+  def _residual_block(x, num_filters, k, strides=1, padding='same'):
+    if strides != 1:
+      residual = Conv1D(
+          num_filters, 1, strides=strides, padding='same', use_bias=False)(x)
+      residual = BatchNormalization()(residual)
+    else:
+      residual = x
+    x = _depthwise_conv_block(
+        x, num_filters, k, strides=strides, padding='same', use_bias=False)
+    x = _depthwise_conv_block(
+        x, num_filters, k, padding='same', use_bias=False)
+    return Add()([x, residual])
+
+  input_layer = Input(shape=[input_size])
+  x = input_layer
+  x = PreprocessRaw(x)
+  # add channel dimension
+  x = Reshape([-1, 1])(x)
+  x = Conv1D(64, 75, strides=50, padding='same', use_bias=False)(x)
+  x = BatchNormalization()(x)
+  x = Activation(relu6)(x)
+  x = _context_conv(x, 128, 3, padding='same')
+  for nh in [256, 384, 512, 768, 1024]:
+    x = _residual_block(x, nh, 3, strides=2)
+    x = _residual_block(x, nh, 3)
+
+  # create attention
+  # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
+  attention = Dense(10, activation='softmax', use_bias=False,
+                    kernel_regularizer=l2(1e-5))(Flatten()(x))
+  attention = Lambda(lambda x: K.expand_dims(x, axis=-1))(attention)
+  # use attention
+  x = Multiply()([x, attention])
+
+  x = GlobalAveragePooling1D()(x)
+  x = Dropout(0.4)(x)
+  x = Dense(num_classes, activation='softmax', use_bias=False,
+            kernel_regularizer=l2(1e-5))(x)
+
+  model = Model(input_layer, x, name='steffen')
+  model.compile(
+      optimizer=keras.optimizers.RMSprop(lr=0.8e-3),
+      loss=keras.losses.categorical_crossentropy,
+      metrics=[keras.metrics.categorical_accuracy])
+  return model
+
+
 def speech_model(model_type, input_size, num_classes=11, *args, **kwargs):
   if model_type == 'simple':
     return simple_model(input_size, num_classes)
@@ -1717,6 +1789,8 @@ def speech_model(model_type, input_size, num_classes=11, *args, **kwargs):
     return conv_1d_spectrogram_model(input_size, num_classes, *args, **kwargs)
   elif model_type == 'conv_1d_mfcc_and_raw':
     return conv_1d_mfcc_and_raw_model(input_size, num_classes, *args, **kwargs)
+  elif model_type == 'steffen':
+    return steffen(input_size, num_classes, *args, **kwargs)
   else:
     raise ValueError("Invalid model: %s" % model_type)
 
