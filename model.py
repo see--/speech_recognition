@@ -1718,6 +1718,7 @@ def steffen(input_size=16000, num_classes=11, *args, **kwargs):
   for nh in [256, 384, 512, 768, 1024]:
     x = _residual_block(x, nh, 3, strides=2)
     x = _residual_block(x, nh, 3)
+    x = _residual_block(x, nh, 3)
 
   # create attention
   # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
@@ -1728,7 +1729,7 @@ def steffen(input_size=16000, num_classes=11, *args, **kwargs):
   x = Multiply()([x, attention])
 
   x = GlobalAveragePooling1D()(x)
-  x = Dropout(0.4)(x)
+  x = Dropout(0.5)(x)
   x = Dense(num_classes, activation='softmax', use_bias=False,
             kernel_regularizer=l2(1e-5))(x)
 
