@@ -818,13 +818,19 @@ def conv_1d_time_sliced_with_attention_model(
   x = _reduce_block(x, 192 * filter_mult, 3)
   x = _reduce_block(x, 256 * filter_mult, 3)
   x = _reduce_block(x, 320 * filter_mult, 3)
-  x = _reduce_block(x, 384 * filter_mult, 3)
-  x = _reduce_block(x, 512 * filter_mult, 3)
-  # attention
+  # create attention
   # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
   attention = Dense(9, activation='softmax', use_bias=False,
                     kernel_regularizer=l2(1e-5))(Flatten()(x))
   attention = Lambda(lambda x: K.expand_dims(x, axis=-1))(attention)
+  # focus
+  x = _reduce_block(x, 384 * filter_mult, 3)
+  x = _context_conv(x, 384 * filter_mult, 3, padding='same')
+
+  x = _reduce_block(x, 512 * filter_mult, 3)
+  x = _context_conv(x, 512 * filter_mult, 3, padding='same')
+  x = _context_conv(x, 768 * filter_mult, 3, padding='same')
+  # use attention
   x = Multiply()([x, attention])
 
   x = GlobalAveragePooling1D()(x)
