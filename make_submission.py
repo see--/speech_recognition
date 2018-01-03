@@ -45,7 +45,7 @@ if __name__ == '__main__':
   if use_speed_tta:
     tta_fns = sorted(glob('data/tta_test/audio/*.wav'))
     assert len(test_fns) == len(tta_fns)
-  wanted_only = False
+  wanted_only = True
   extend_reversed = False
   output_representation = 'raw'
   batch_size = 384
@@ -65,7 +65,7 @@ if __name__ == '__main__':
       validation_percentage=10.0, testing_percentage=0.0,
       model_settings=model_settings,
       output_representation=output_representation)
-  model = load_model('checkpoints_163/ep-093-vl-0.2764.hdf5',
+  model = load_model('checkpoints_165/ep-044-vl-0.2024.hdf5',
                      custom_objects={'relu6': relu6,
                                      'DepthwiseConv2D': DepthwiseConv2D,
                                      'overlapping_time_slice_stack':
@@ -205,11 +205,11 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_163_tta_flsl.csv',
+      'submission_165_tta_flsl.csv',
       index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_163_tta_flsl_all_labels.csv',
+      'submission_165_tta_flsl_all_labels.csv',
       index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
@@ -217,6 +217,6 @@ if __name__ == '__main__':
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_163_tta_flsl_all_labels_probs.csv',
+      'submission_165_tta_flsl_all_labels_probs.csv',
       index=False, compression=None)
   print("Done!")
