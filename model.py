@@ -819,19 +819,13 @@ def conv_1d_time_sliced_with_attention_model(
   x = _reduce_block(x, 192 * filter_mult, 3)
   x = _reduce_block(x, 256 * filter_mult, 3)
   x = _reduce_block(x, 320 * filter_mult, 3)
-  # create attention
+  x = _reduce_block(x, 384 * filter_mult, 3)
+  x = _reduce_block(x, 448 * filter_mult, 3)
+  # attention
   # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
   attention = Dense(9, activation='softmax', use_bias=False,
                     kernel_regularizer=l2(1e-5))(Flatten()(x))
   attention = Lambda(lambda x: K.expand_dims(x, axis=-1))(attention)
-  # focus
-  x = _reduce_block(x, 384 * filter_mult, 3)
-  x = _context_conv(x, 384 * filter_mult, 3, padding='same')
-
-  x = _reduce_block(x, 512 * filter_mult, 3)
-  x = _context_conv(x, 512 * filter_mult, 3, padding='same')
-  x = _context_conv(x, 768 * filter_mult, 3, padding='same')
-  # use attention
   x = Multiply()([x, attention])
 
   x = GlobalAveragePooling1D()(x)
@@ -841,8 +835,9 @@ def conv_1d_time_sliced_with_attention_model(
 
   model = Model(input_layer, x, name='conv_1d_time_sliced_with_attention')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=0.8e-3),
-      loss=keras.losses.categorical_crossentropy,
+      optimizer=keras.optimizers.RMSprop(lr=1e-3),
+      loss=lambda y_true, y_pred: smooth_categorical_crossentropy(
+          y_true, y_pred, label_smoothing=0.1),
       metrics=[keras.metrics.categorical_accuracy])
   return model
 
