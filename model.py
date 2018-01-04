@@ -751,7 +751,7 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11, filter_mult=1):
   x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
   # default conv
   x = Conv1D(32 * filter_mult, 3, strides=2, use_bias=False,
-             kernel_regularizer=l2(0.0))(x)
+             kernel_regularizer=l2(1e-5))(x)
   x = BatchNormalization()(x)
   x = Activation(relu6)(x)
   # depthwise conv
@@ -768,7 +768,7 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=11, filter_mult=1):
   x = Activation(relu6)(x)
   x = Dropout(0.3)(x)
   x = Dense(num_classes, activation='softmax', use_bias=False,
-            kernel_regularizer=l2(0.0))(x)
+            kernel_regularizer=l2(1e-5))(x)
 
   model = Model(input_layer, x, name='conv_1d_time_sliced')
   model.compile(
@@ -808,36 +808,37 @@ def conv_1d_time_sliced_with_attention_model(
     x = _context_conv(x, num_filters, k, padding='valid')
     return x
 
-  x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
+  x = Lambda(lambda x: overlapping_time_slice_stack(x, 20, 10))(x)
   # default conv
-  x = Conv1D(64 * filter_mult, 3, strides=2, use_bias=False,
-             kernel_regularizer=l2(0.0))(x)
+  x = Conv1D(128 * filter_mult, 3, strides=2, use_bias=False,
+             kernel_regularizer=l2(1e-5))(x)
   x = BatchNormalization()(x)
   x = Activation(relu6)(x)
   # depthwise conv
   x = _context_conv(x, 128 * filter_mult, 3)
+  x = _reduce_block(x, 160 * filter_mult, 3)
   x = _reduce_block(x, 192 * filter_mult, 3)
   x = _reduce_block(x, 256 * filter_mult, 3)
   x = _reduce_block(x, 320 * filter_mult, 3)
   x = _reduce_block(x, 384 * filter_mult, 3)
-  x = _reduce_block(x, 448 * filter_mult, 3)
+  x = _reduce_block(x, 480 * filter_mult, 3)
   # attention
   # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
   attention = Dense(9, activation='softmax', use_bias=False,
-                    kernel_regularizer=l2(0.0))(Flatten()(x))
+                    kernel_regularizer=l2(1e-5))(Flatten()(x))
   attention = Lambda(lambda x: K.expand_dims(x, axis=-1))(attention)
   x = Multiply()([x, attention])
 
   x = GlobalAveragePooling1D()(x)
   x = Dropout(0.4)(x)
   x = Dense(num_classes, activation='softmax', use_bias=False,
-            kernel_regularizer=l2(0.0))(x)
+            kernel_regularizer=l2(1e-5))(x)
 
   model = Model(input_layer, x, name='conv_1d_time_sliced_with_attention')
   model.compile(
       optimizer=keras.optimizers.RMSprop(lr=1e-3),
       loss=lambda y_true, y_pred: smooth_categorical_crossentropy(
-          y_true, y_pred, label_smoothing=0.2),
+          y_true, y_pred, label_smoothing=0.1),
       metrics=[keras.metrics.categorical_accuracy])
   return model
 
@@ -887,7 +888,7 @@ def conv_1d_residual_model(input_size=16000, num_classes=11, filter_mult=1):
   x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
   # default conv
   x = Conv1D(64 * filter_mult, 3, strides=2, use_bias=False,
-             kernel_regularizer=l2(0.0))(x)
+             kernel_regularizer=l2(1e-5))(x)
   x = BatchNormalization()(x)
   x = Activation(relu6)(x)
   # depthwise conv
@@ -902,7 +903,7 @@ def conv_1d_residual_model(input_size=16000, num_classes=11, filter_mult=1):
   x = GlobalAveragePooling1D()(x)
   x = Dropout(0.5)(x)
   x = Dense(num_classes, activation='softmax',
-            kernel_regularizer=l2(0.0))(x)
+            kernel_regularizer=l2(1e-5))(x)
 
   model = Model(input_layer, x, name='conv_1d_residual')
   model.compile(
@@ -958,7 +959,7 @@ def xception_with_attention_model(
   x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
   # default conv
   x = Conv1D(64 * filter_mult, 3, strides=2, use_bias=False,
-             kernel_regularizer=l2(0.0))(x)
+             kernel_regularizer=l2(1e-5))(x)
   x = BatchNormalization()(x)
   x = Activation(relu6)(x)
   # depthwise conv
@@ -974,10 +975,10 @@ def xception_with_attention_model(
   attention = _context_conv(x, 1, 5, padding='same')
   attention = Lambda(lambda x: softmax(x, axis=1))(attention)
   x = Multiply()([x, attention])
-  x = Bidirectional(GRU(192, kernel_regularizer=l2(0.0),
+  x = Bidirectional(GRU(192, kernel_regularizer=l2(1e-5),
                         dropout=0.2, recurrent_dropout=0.2))(x)
   x = Dense(num_classes, activation='softmax',
-            kernel_regularizer=l2(0.0))(x)
+            kernel_regularizer=l2(1e-5))(x)
 
   model = Model(input_layer, x, name='xception_with_attention')
   model.compile(
@@ -1449,7 +1450,7 @@ def conv_1d_log_mfcc_model(
   x = Reshape([time_size, frequency_size])(x)
   # default conv
   x = Conv1D(64, 3, use_bias=False,
-             kernel_regularizer=l2(0.0))(x)
+             kernel_regularizer=l2(1e-5))(x)
   x = BatchNormalization()(x)
   x = Activation(relu6)(x)
   # depthwise conv
@@ -1468,12 +1469,12 @@ def conv_1d_log_mfcc_model(
   attention = _context_conv(x, 1, 3, padding='same')
   attention = Lambda(lambda x: softmax(x, axis=1))(attention)
   x = Multiply()([x, attention])
-  # x = Bidirectional(GRU(128, kernel_regularizer=l2(0.0),
+  # x = Bidirectional(GRU(128, kernel_regularizer=l2(1e-5),
   #                       dropout=0.2, recurrent_dropout=0.2))(x)
   x = GlobalAveragePooling1D()(x)
   x = Dropout(0.2)(x)
   x = Dense(num_classes, activation='softmax',
-            kernel_regularizer=l2(0.0))(x)
+            kernel_regularizer=l2(1e-5))(x)
 
   model = Model(input_layer, x, name='conv_1d_log_mfcc')
   model.compile(
@@ -1531,7 +1532,7 @@ def conv_1d_spectrogram_model(
   x = Reshape([time_size, frequency_size])(x)
   # default conv
   x = Conv1D(64, 3, use_bias=False,
-             kernel_regularizer=l2(0.0))(x)
+             kernel_regularizer=l2(1e-5))(x)
   x = BatchNormalization()(x)
   x = Activation(relu6)(x)
   # depthwise conv
@@ -1550,12 +1551,12 @@ def conv_1d_spectrogram_model(
   attention = _context_conv(x, 1, 3, padding='same')
   attention = Lambda(lambda x: softmax(x, axis=1))(attention)
   x = Multiply()([x, attention])
-  # x = Bidirectional(GRU(128, kernel_regularizer=l2(0.0),
+  # x = Bidirectional(GRU(128, kernel_regularizer=l2(1e-5),
   #                       dropout=0.2, recurrent_dropout=0.2))(x)
   x = GlobalAveragePooling1D()(x)
   x = Dropout(0.2)(x)
   x = Dense(num_classes, activation='softmax',
-            kernel_regularizer=l2(0.0))(x)
+            kernel_regularizer=l2(1e-5))(x)
 
   model = Model(input_layer, x, name='conv_1d_spectrogram')
   model.compile(
@@ -1617,7 +1618,7 @@ def conv_1d_mfcc_and_raw_model(
   x_mfcc = Reshape([time_size, frequency_size])(x_mfcc)
   # default conv
   x_mfcc = Conv1D(64, 3, use_bias=False,
-                  kernel_regularizer=l2(0.0))(x_mfcc)
+                  kernel_regularizer=l2(1e-5))(x_mfcc)
   x_mfcc = BatchNormalization()(x_mfcc)
   x_mfcc = Activation(relu6)(x_mfcc)
   # raw features
@@ -1627,7 +1628,7 @@ def conv_1d_mfcc_and_raw_model(
       x, frame_length, frame_step, padding='VALID'))(x_raw)
   # default conv
   x_raw = Conv1D(96, 3, use_bias=False,
-                 kernel_regularizer=l2(0.0))(x_raw)
+                 kernel_regularizer=l2(1e-5))(x_raw)
   x_raw = BatchNormalization()(x_raw)
   x_raw = Activation(relu6)(x_raw)
 
@@ -1648,12 +1649,12 @@ def conv_1d_mfcc_and_raw_model(
   # attention = _context_conv(x, 1, 3, padding='same')
   # attention = Lambda(lambda x: softmax(x, axis=1))(attention)
   # x = Multiply()([x, attention])
-  # x = Bidirectional(GRU(128, kernel_regularizer=l2(0.0),
+  # x = Bidirectional(GRU(128, kernel_regularizer=l2(1e-5),
   #                       dropout=0.2, recurrent_dropout=0.2))(x)
   x = GlobalAveragePooling1D()(x)
   x = Dropout(0.3)(x)
   x = Dense(num_classes, activation='softmax',
-            kernel_regularizer=l2(0.0))(x)
+            kernel_regularizer=l2(1e-5))(x)
 
   model = Model([input_layer_mfcc, input_layer_raw],
                 x, name='conv_1d_mfcc_and_raw')
@@ -1719,7 +1720,7 @@ def steffen(input_size=16000, num_classes=11, *args, **kwargs):
   # create attention
   # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
   attention = Dense(10, activation='softmax', use_bias=False,
-                    kernel_regularizer=l2(0.0))(Flatten()(x))
+                    kernel_regularizer=l2(1e-5))(Flatten()(x))
   attention = Lambda(lambda x: K.expand_dims(x, axis=-1))(attention)
   # use attention
   x = Multiply()([x, attention])
@@ -1727,7 +1728,7 @@ def steffen(input_size=16000, num_classes=11, *args, **kwargs):
   x = GlobalAveragePooling1D()(x)
   x = Dropout(0.5)(x)
   x = Dense(num_classes, activation='softmax', use_bias=False,
-            kernel_regularizer=l2(0.0))(x)
+            kernel_regularizer=l2(1e-5))(x)
 
   model = Model(input_layer, x, name='steffen')
   model.compile(

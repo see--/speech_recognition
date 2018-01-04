@@ -66,7 +66,7 @@ if __name__ == '__main__':
       validation_percentage=10.0, testing_percentage=0.0,
       model_settings=model_settings,
       output_representation=output_representation)
-  model = load_model('checkpoints_173/ep-055-vl-0.3551.hdf5',
+  model = load_model('checkpoints_106/ep-023-vl-0.2274.hdf5',
                      custom_objects={'relu6': relu6,
                                      'DepthwiseConv2D': DepthwiseConv2D,
                                      'overlapping_time_slice_stack':
@@ -74,7 +74,7 @@ if __name__ == '__main__':
                                      'softmax': softmax,
                                      '<lambda>':
                                      smooth_categorical_crossentropy})
-  # embed()
+  embed()
 
   # In wanted_labels we map the not wanted words to `unknown`. Though we
   # keep track of all labels in `labels`.
