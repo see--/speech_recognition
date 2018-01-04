@@ -1,4 +1,5 @@
 import tensorflow as tf
+from keras import backend as K
 
 
 def data_gen(audio_processor, sess,
@@ -64,3 +65,27 @@ def center_crop(data, desired_size=16000):
       return data[:, left: left + desired_size]
     else:
       raise RuntimeError("Invalid tensor shape: %s" % (list(data.shape)))
+
+
+def smooth_categorical_crossentropy(
+        target, output, from_logits=False, label_smoothing=0.0):
+    """Categorical crossentropy between an output tensor and a target tensor.
+    # Arguments
+        target: A tensor of the same shape as `output`.
+        output: A tensor resulting from a softmax
+            (unless `from_logits` is True, in which
+            case `output` is expected to be the logits).
+        from_logits: Boolean, whether `output` is the
+            result of a softmax, or is a tensor of logits.
+    # Returns
+        Output tensor.
+    """
+    # Note: tf.nn.softmax_cross_entropy_with_logits
+    # expects logits, Keras expects probabilities.
+    if not from_logits:
+        _epsilon = tf.convert_to_tensor(K.epsilon(), output.dtype.base_dtype)
+        output = tf.clip_by_value(output, _epsilon, 1 - _epsilon)
+        output = tf.log(output)
+
+    return tf.losses.softmax_cross_entropy(
+        target, output, label_smoothing=label_smoothing)

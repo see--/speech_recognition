@@ -14,6 +14,7 @@ from keras.activations import softmax
 from keras.models import Model
 from keras.applications.mobilenet import DepthwiseConv2D
 
+from utils import smooth_categorical_crossentropy
 
 def preprocess(x):
   x = (x + 0.8) / 7.0
@@ -1736,7 +1737,8 @@ def steffen(input_size=16000, num_classes=11, *args, **kwargs):
   model = Model(input_layer, x, name='steffen')
   model.compile(
       optimizer=keras.optimizers.RMSprop(lr=0.8e-3),
-      loss=keras.losses.categorical_crossentropy,
+      loss=lambda y_true, y_pred: smooth_categorical_crossentropy(
+          y_true, y_pred, label_smoothing=0.2),
       metrics=[keras.metrics.categorical_accuracy])
   return model
 
