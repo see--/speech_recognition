@@ -32,7 +32,7 @@ if __name__ == '__main__':
   output_representation = 'raw'
   sample_rate = 16000
   batch_size = 384
-  classes = get_classes(wanted_only=True, extend_reversed=False)
+  classes = get_classes(wanted_only=False, extend_reversed=False)
   model_settings = prepare_model_settings(
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
       clip_duration_ms=1000, window_size_ms=30.0, window_stride_ms=10.0,
@@ -60,8 +60,8 @@ if __name__ == '__main__':
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=5, verbose=1, min_lr=5e-5),
-      TensorBoard(log_dir='logs_171'),
-      ModelCheckpoint('checkpoints_171/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
+      TensorBoard(log_dir='logs_172'),
+      ModelCheckpoint('checkpoints_172/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5')]
   model.fit_generator(
       train_gen, steps_per_epoch=ap.set_size('training') // (batch_size * 0.5),
       epochs=100, verbose=1, callbacks=callbacks)
