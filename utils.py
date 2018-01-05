@@ -1,3 +1,4 @@
+from __future__ import division
 import tensorflow as tf
 from keras import backend as K
 
@@ -7,7 +8,8 @@ def data_gen(audio_processor, sess,
              background_frequency=0.5, background_volume_range=0.15,
              foreground_frequency=0.5, foreground_volume_range=0.15,
              time_shift_frequency=0.5, time_shift_range=[-1300, 0],
-             mode='validation', pseudo_frequency=0.4, flip_frequency=0.5):
+             mode='validation', pseudo_frequency=1.0, flip_frequency=0.5,
+             pseudo_frequency_decay_per_epoch=1.0 / 80):
   offset = 0
   if mode != 'training':
     background_frequency = 0.0
@@ -15,6 +17,7 @@ def data_gen(audio_processor, sess,
     foreground_frequency = 0.0
     foreground_volume_range = 0.0
     pseudo_frequency = 0.0
+    pseudo_frequency_decay_per_epoch = 0.0
     time_shift_frequency = 0.0
     time_shift_range = [0, 0]
     flip_frequency = 0.0
@@ -33,6 +36,9 @@ def data_gen(audio_processor, sess,
     offset += batch_size
     if offset > audio_processor.set_size(mode) - batch_size:
       offset = 0
+      pseudo_frequency -= pseudo_frequency_decay_per_epoch
+      print("[%s mode]: Pseudo frequency set to: %.2f"
+            % (mode, pseudo_frequency))
     yield X, y
 
 
