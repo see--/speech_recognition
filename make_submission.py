@@ -62,11 +62,11 @@ if __name__ == '__main__':
       output_representation=output_representation)
   ap = AudioProcessor(
       data_dirs=['data/train/audio'], wanted_words=classes,
-      silence_percentage=20.0, unknown_percentage=5.0,
+      silence_percentage=12.0, unknown_percentage=5.0,
       validation_percentage=10.0, testing_percentage=0.0,
       model_settings=model_settings,
       output_representation=output_representation)
-  model = load_model('checkpoints_106/ep-023-vl-0.2274.hdf5',
+  model = load_model('checkpoints_176/ep-086-vl-0.3589.hdf5',
                      custom_objects={'relu6': relu6,
                                      'DepthwiseConv2D': DepthwiseConv2D,
                                      'overlapping_time_slice_stack':
@@ -74,7 +74,7 @@ if __name__ == '__main__':
                                      'softmax': softmax,
                                      '<lambda>':
                                      smooth_categorical_crossentropy})
-  embed()
+  # embed()
 
   # In wanted_labels we map the not wanted words to `unknown`. Though we
   # keep track of all labels in `labels`.
@@ -208,11 +208,11 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_173_tta_flsl.csv',
+      'submission_176_tta_flsl.csv',
       index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_173_tta_flsl_all_labels.csv',
+      'submission_176_tta_flsl_all_labels.csv',
       index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
@@ -220,6 +220,6 @@ if __name__ == '__main__':
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_173_tta_flsl_all_labels_probs.csv',
+      'submission_176_tta_flsl_all_labels_probs.csv',
       index=False, compression=None)
   print("Done!")
