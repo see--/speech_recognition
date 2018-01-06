@@ -5,11 +5,10 @@ from keras import backend as K
 
 def data_gen(audio_processor, sess,
              batch_size=128,
-             background_frequency=0.5, background_volume_range=0.15,
-             foreground_frequency=0.5, foreground_volume_range=0.15,
+             background_frequency=0.5, background_volume_range=0.2,
+             foreground_frequency=0.5, foreground_volume_range=0.2,
              time_shift_frequency=0.5, time_shift_range=[-1300, 0],
-             mode='validation', pseudo_frequency=1.0, flip_frequency=0.5,
-             pseudo_frequency_decay_per_epoch=1.0 / 160):
+             mode='validation', pseudo_frequency=0.4, flip_frequency=0.0):
   offset = 0
   if mode != 'training':
     background_frequency = 0.0
@@ -17,7 +16,6 @@ def data_gen(audio_processor, sess,
     foreground_frequency = 0.0
     foreground_volume_range = 0.0
     pseudo_frequency = 0.0
-    pseudo_frequency_decay_per_epoch = 0.0
     time_shift_frequency = 0.0
     time_shift_range = [0, 0]
     flip_frequency = 0.0
@@ -36,9 +34,6 @@ def data_gen(audio_processor, sess,
     offset += batch_size
     if offset > audio_processor.set_size(mode) - batch_size:
       offset = 0
-      pseudo_frequency -= pseudo_frequency_decay_per_epoch
-      print("\n[%s-generator]: Pseudo frequency set to: %.2f"
-            % (mode, pseudo_frequency))
     yield X, y
 
 

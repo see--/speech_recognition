@@ -802,7 +802,7 @@ def conv_1d_time_sliced_with_attention_model(
     x = _context_conv(x, num_filters, k, padding='valid')
     return x
 
-  x = Lambda(lambda x: overlapping_time_slice_stack(x, 20, 10))(x)
+  x = Lambda(lambda x: overlapping_time_slice_stack(x, 40, 20))(x)
   # default conv
   x = Conv1D(128 * filter_mult, 3, strides=2, use_bias=False,
              kernel_regularizer=l2(1e-5))(x)
@@ -810,25 +810,16 @@ def conv_1d_time_sliced_with_attention_model(
   x = Activation(relu6)(x)
   # depthwise conv
   x = _context_conv(x, 128 * filter_mult, 3)
-  x = _reduce_block(x, 160 * filter_mult, 3)
   x = _reduce_block(x, 192 * filter_mult, 3)
   x = _reduce_block(x, 256 * filter_mult, 3)
   x = _reduce_block(x, 320 * filter_mult, 3)
   x = _reduce_block(x, 384 * filter_mult, 3)
-  x = _reduce_block(x, 448 * filter_mult, 3)
-  # attention
-  # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
-  attention = Dropout(0.3)(Flatten()(x))
-  attention = Dense(9, activation='softmax', use_bias=False,
-                    kernel_regularizer=l2(1e-5))(attention)
-  attention = Lambda(lambda x: K.expand_dims(x, axis=-1))(attention)
-  x = Multiply()([x, attention])
+  x = _reduce_block(x, 512 * filter_mult, 3)
 
-  # credits to tagu for using both :P
-  x_max = GlobalMaxPooling1D()(x)
+  x_max = GlobalMaxPool1D()(x)
   x_avg = GlobalAveragePooling1D()(x)
   x = Concatenate()([x_max, x_avg])
-  x = Dropout(0.4)(x)
+  x = Dropout(0.5)(x)
   x = Dense(num_classes, activation='softmax', use_bias=False,
             kernel_regularizer=l2(1e-5))(x)
 
@@ -1715,7 +1706,6 @@ def steffeNet(input_size=16000, num_classes=11, *args, **kwargs):
     x = _residual_block(x, nh, 3)
     x = _residual_block(x, nh, 3)
 
-  # credits to tagu for using both
   x_max = GlobalMaxPooling1D()(x)
   x_avg = GlobalAveragePooling1D()(x)
   x = Concatenate()([x_max, x_avg])
