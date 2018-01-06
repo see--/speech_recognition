@@ -44,7 +44,7 @@ if __name__ == '__main__':
   batch_counter = 0
   X_batch = []
 
-  for i in tqdm(range(len(test_fns[:2000]))):
+  for i in tqdm(range(len(test_fns[:]))):
     test_fn = test_fns[i]
     fns.append(os.path.basename(test_fn))
     rate, wav_data = wavfile.read(test_fn)
@@ -68,5 +68,5 @@ if __name__ == '__main__':
       batch_counter = 0
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'rpi_submission_177.csv',
+      'rpi_submission_186b.csv',
       index=False, compression=None)

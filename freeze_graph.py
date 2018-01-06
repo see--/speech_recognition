@@ -21,7 +21,7 @@ OPTIMIZED_PATH = 'tf_files/optimized.pb'
 wanted_classes = get_classes(wanted_only=True)
 all_classes = get_classes(wanted_only=False)
 
-model = load_model('checkpoints_177/ep-070-vl-0.2478.hdf5',
+model = load_model('checkpoints_186/ep-053-vl-0.2915.hdf5',
                    custom_objects={'relu6': relu6,
                                    'DepthwiseConv2D': DepthwiseConv2D,
                                    'overlapping_time_slice_stack':
@@ -48,18 +48,25 @@ all_probs = model(data_reshaped)
 all_probs = tf.reshape(all_probs, (-1, ))
 # map classes to 12 wanted classes:
 # 'silence unknown', 'stop down off right up go on yes left no'
-# models were trained with 32 classes:
+# models were trained with 32 classes (including the known unknowns):
 # 'silence unknown', 'sheila nine stop bed four six down bird marvin cat off right seven eight up three happy go zero on wow dog yes five one tree house two left no'  # noqa
-mapped_classes = []
+# Note: This is NOT simply summing up the probabilities for
+# the unknown classes (even though it would sum up to 1).
+mapped_classes, unknown_classes = [], []
 mapped_classes.append(all_probs[0])  # silence
-mapped_classes.append(all_probs[1])  # unknown
+unknown_classes.append(all_probs[1])  # unknown unknown
+# this is safe as we defined them in the same order
+# (e.g. down comes before stop)
 for i, c in enumerate(all_classes):
   if c in wanted_classes:
     mapped_classes.append(all_probs[i + 2])
   else:
-    mapped_classes[1] += all_probs[i + 2]
+    unknown_classes.append(all_probs[i + 2])
 
-mapped_probs = tf.stack(mapped_classes, name=FINAL_TENSOR_NAME)
+unknown_classes = tf.stack(unknown_classes)
+mapped_classes = [mapped_classes[0], tf.reduce_max(unknown_classes)] + \
+    mapped_classes[1:]
+mapped_probs = tf.nn.softmax(tf.stack(mapped_classes), name=FINAL_TENSOR_NAME)
 
 frozen_graph_def = graph_util.convert_variables_to_constants(
     sess, sess.graph.as_graph_def(),
