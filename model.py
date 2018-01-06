@@ -1663,7 +1663,7 @@ def conv_1d_mfcc_and_raw_model(
   return model
 
 
-def steffen(input_size=16000, num_classes=11, *args, **kwargs):
+def steffeNet(input_size=16000, num_classes=11, *args, **kwargs):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -1715,22 +1715,17 @@ def steffen(input_size=16000, num_classes=11, *args, **kwargs):
     x = _residual_block(x, nh, 3)
     x = _residual_block(x, nh, 3)
 
-  # create attention
-  # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
-  attention = Dense(10, activation='softmax', use_bias=False,
-                    kernel_regularizer=l2(1e-5))(Flatten()(x))
-  attention = Lambda(lambda x: K.expand_dims(x, axis=-1))(attention)
-  # use attention
-  x = Multiply()([x, attention])
-
-  x = GlobalAveragePooling1D()(x)
+  # credits to tagu for using both
+  x_max = GlobalMaxPooling1D()(x)
+  x_avg = GlobalAveragePooling1D()(x)
+  x = Concatenate()([x_max, x_avg])
   x = Dropout(0.5)(x)
   x = Dense(num_classes, activation='softmax', use_bias=False,
             kernel_regularizer=l2(1e-5))(x)
 
-  model = Model(input_layer, x, name='steffen')
+  model = Model(input_layer, x, name='steffeNet')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=0.8e-3),
+      optimizer=keras.optimizers.RMSprop(lr=1.0e-3),
       loss=lambda y_true, y_pred: smooth_categorical_crossentropy(
           y_true, y_pred, label_smoothing=0.2),
       metrics=[keras.metrics.categorical_accuracy])
@@ -1786,8 +1781,8 @@ def speech_model(model_type, input_size, num_classes=11, *args, **kwargs):
     return conv_1d_spectrogram_model(input_size, num_classes, *args, **kwargs)
   elif model_type == 'conv_1d_mfcc_and_raw':
     return conv_1d_mfcc_and_raw_model(input_size, num_classes, *args, **kwargs)
-  elif model_type == 'steffen':
-    return steffen(input_size, num_classes, *args, **kwargs)
+  elif model_type == 'steffeNet':
+    return steffeNet(input_size, num_classes, *args, **kwargs)
   else:
     raise ValueError("Invalid model: %s" % model_type)
 

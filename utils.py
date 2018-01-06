@@ -37,7 +37,7 @@ def data_gen(audio_processor, sess,
     if offset > audio_processor.set_size(mode) - batch_size:
       offset = 0
       pseudo_frequency -= pseudo_frequency_decay_per_epoch
-      print("[%s mode]: Pseudo frequency set to: %.2f"
+      print("\n[%s-generator]: Pseudo frequency set to: %.2f"
             % (mode, pseudo_frequency))
     yield X, y
 
