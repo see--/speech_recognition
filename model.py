@@ -1,15 +1,8 @@
 import keras
 from keras import backend as K
-from keras.layers import Dense, Input, Lambda, Conv1D, AveragePooling1D
-from keras.layers import Reshape, Flatten, Add
-from keras.layers import Conv2D, MaxPool2D, MaxPool1D, ZeroPadding1D
-from keras.layers import BatchNormalization, Activation, Multiply
-from keras.layers import GlobalAveragePooling2D, MaxPool1D
-from keras.layers import Dropout, Add, GlobalAveragePooling1D
-from keras.layers import LSTM, GRU, Bidirectional
-from keras.layers import Concatenate, AveragePooling2D
+from keras.layers import *
 from keras.layers.noise import AlphaDropout
-from keras.regularizers import l2, l1
+from keras.regularizers import l2
 from keras.activations import softmax
 from keras.models import Model
 from keras.applications.mobilenet import DepthwiseConv2D
@@ -822,22 +815,26 @@ def conv_1d_time_sliced_with_attention_model(
   x = _reduce_block(x, 256 * filter_mult, 3)
   x = _reduce_block(x, 320 * filter_mult, 3)
   x = _reduce_block(x, 384 * filter_mult, 3)
-  x = _reduce_block(x, 480 * filter_mult, 3)
+  x = _reduce_block(x, 448 * filter_mult, 3)
   # attention
   # https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_dense.py
+  attention = Dropout(0.3)(Flatten()(x))
   attention = Dense(9, activation='softmax', use_bias=False,
-                    kernel_regularizer=l2(1e-5))(Flatten()(x))
+                    kernel_regularizer=l2(1e-5))(attention)
   attention = Lambda(lambda x: K.expand_dims(x, axis=-1))(attention)
   x = Multiply()([x, attention])
 
-  x = GlobalAveragePooling1D()(x)
+  # credits to tagu for using both :P
+  x_max = GlobalMaxPooling1D()(x)
+  x_avg = GlobalAveragePooling1D()(x)
+  x = Concatenate()([x_max, x_avg])
   x = Dropout(0.4)(x)
   x = Dense(num_classes, activation='softmax', use_bias=False,
             kernel_regularizer=l2(1e-5))(x)
 
   model = Model(input_layer, x, name='conv_1d_time_sliced_with_attention')
   model.compile(
-      optimizer=keras.optimizers.SGD(lr=1e-3, momentum=0.98),
+      optimizer=keras.optimizers.RMSprop(lr=1e-3),
       loss=lambda y_true, y_pred: smooth_categorical_crossentropy(
           y_true, y_pred, label_smoothing=0.143),
       metrics=[keras.metrics.categorical_accuracy])
