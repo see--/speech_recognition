@@ -821,10 +821,10 @@ def conv_1d_time_sliced_with_attention_model(
                     kernel_regularizer=l2(1e-5))(attention)
   attention = Lambda(lambda x: K.expand_dims(x, axis=-1))(attention)
 
-  x = Multiply()([x, attention])
-  x_max = GlobalMaxPool1D()(x)
-  x_avg = GlobalAveragePooling1D()(x)
-  x = Concatenate()([x_max, x_avg])
+  attention = Multiply()([x, attention])
+  pooled_attention = GlobalAveragePooling1D()(attention)
+  pooled_x = GlobalAveragePooling1D()(x)
+  x = Concatenate()([pooled_attention, pooled_x])
   x = Dropout(0.314)(x)
   x = Dense(num_classes, activation='softmax', use_bias=False,
             kernel_regularizer=l2(1e-5))(x)
