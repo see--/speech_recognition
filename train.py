@@ -26,7 +26,7 @@ if __name__ == '__main__':
   sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
   K.set_session(sess)
   data_dirs = ['data/train/audio']
-  add_pseudo = True
+  add_pseudo = False
   if add_pseudo:
     data_dirs.append('data/pseudo/audio')
   output_representation = 'raw'
@@ -44,7 +44,9 @@ if __name__ == '__main__':
       validation_percentage=10.0, testing_percentage=0.0,
       model_settings=model_settings,
       output_representation=output_representation)
-  train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training')
+  train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training',
+                       pseudo_frequency=0.0,
+                       pseudo_frequency_decay_per_epoch=0.0)
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation')
   model = speech_model(
       'conv_1d_time_sliced_with_attention',
@@ -60,9 +62,9 @@ if __name__ == '__main__':
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=4, verbose=1, min_lr=5e-6),
-      TensorBoard(log_dir='logs_181'),
+      TensorBoard(log_dir='logs_183'),
       ModelCheckpoint(
-          'checkpoints_181/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5',
+          'checkpoints_183/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5',
           save_best_only=True, monitor='val_categorical_accuracy',
           mode='max')]
   model.fit_generator(
