@@ -45,7 +45,7 @@ if __name__ == '__main__':
       model_settings=model_settings,
       output_representation=output_representation)
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training',
-                       pseudo_frequency=0.33)
+                       pseudo_frequency=0.314)
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation')
   model = speech_model(
       'conv_1d_time_sliced_with_attention',
