@@ -8,7 +8,8 @@ def data_gen(audio_processor, sess,
              background_frequency=0.3, background_volume_range=0.15,
              foreground_frequency=0.5, foreground_volume_range=0.15,
              time_shift_frequency=0.8, time_shift_range=[-1300, 0],
-             mode='validation', pseudo_frequency=0.33, flip_frequency=0.5):
+             mode='validation', pseudo_frequency=0.33, flip_frequency=0.5,
+             silence_volume_range=0.4):
   ep_count = 0
   offset = 0
   if mode != 'training':
@@ -20,6 +21,7 @@ def data_gen(audio_processor, sess,
     time_shift_frequency = 0.0
     time_shift_range = [0, 0]
     flip_frequency = 0.0
+    # silence_volume_range stays same for validation
   while True:
     X, y = audio_processor.get_data(
         how_many=batch_size, offset=0 if mode == 'training' else offset,
@@ -31,18 +33,17 @@ def data_gen(audio_processor, sess,
         time_shift_range=time_shift_range,
         mode=mode, sess=sess,
         pseudo_frequency=pseudo_frequency,
-        flip_frequency=flip_frequency)
+        flip_frequency=flip_frequency,
+        silence_volume_range=silence_volume_range)
     offset += batch_size
     if offset > audio_processor.set_size(mode) - batch_size:
       offset = 0
       if mode == 'training':
-        if 10 >= ep_count:
+        if 20 >= ep_count:
           pseudo_frequency = 1.0
-        elif 20 >= ep_count > 10:
-          pseudo_frequency = 0.8
         elif 30 >= ep_count > 20:
-          pseudo_frequency = 0.6
-        elif 40 >= ep_count > 20:
+          pseudo_frequency = 0.7
+        elif 40 >= ep_count > 30:
           pseudo_frequency = 0.4
         else:
           pseudo_frequency = 0.2

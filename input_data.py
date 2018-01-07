@@ -43,7 +43,7 @@ SILENCE_INDEX = 0
 UNKNOWN_WORD_LABEL = '_unknown_'
 UNKNOWN_WORD_INDEX = 1
 BACKGROUND_NOISE_DIR_NAME = '_background_noise_'
-RANDOM_SEED = 777  # 59185
+RANDOM_SEED = 59185
 
 
 def prepare_words_list(wanted_words):
@@ -397,7 +397,8 @@ class AudioProcessor(object):
                foreground_frequency, foreground_volume_range,
                time_shift_frequency, time_shift_range,
                mode, sess,
-               pseudo_frequency=0.0, flip_frequency=0.0):
+               pseudo_frequency=0.0, flip_frequency=0.0,
+               silence_volume_range=0.0):
     """Gather samples from the data set, applying transformations as needed.
 
     When the mode is 'training', a random selection of samples will be
@@ -492,7 +493,7 @@ class AudioProcessor(object):
           # silence class with all zeros is boring!
           if sample['label'] == SILENCE_LABEL and \
              np.random.uniform(0, 1) < 0.9:
-            background_volume = np.random.uniform(0, background_volume_range)
+            background_volume = np.random.uniform(0, silence_volume_range)
       else:
         background_reshaped = np.zeros([desired_samples, 1])
         background_volume = 0.0

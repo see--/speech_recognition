@@ -66,7 +66,7 @@ if __name__ == '__main__':
       validation_percentage=10.0, testing_percentage=0.0,
       model_settings=model_settings,
       output_representation=output_representation)
-  model = load_model('checkpoints_188/ep-078-vl-0.2900.hdf5',
+  model = load_model('checkpoints_190/ep-050-vl-0.1580.hdf5',
                      custom_objects={'relu6': relu6,
                                      'DepthwiseConv2D': DepthwiseConv2D,
                                      'overlapping_time_slice_stack':
@@ -131,8 +131,9 @@ if __name__ == '__main__':
       if use_tta:
         X_batch_left = np.roll(np.float32(X_batch), -800, axis=1)
         left_probs = model.predict(X_batch_left)
+        loud_probs = model.predict(1.1 * np.float32(X_batch))
         silent_probs = model.predict(0.9 * np.float32(X_batch))
-        # flipped_probs = model.predict(-1.0 * np.float32(X_batch))
+        flipped_probs = model.predict(-1.0 * np.float32(X_batch))
         if use_speed_tta:
           slow_probs = model.predict(np.float32(X_tta_batch))
           slow_loud_probs = model.predict(
@@ -140,13 +141,13 @@ if __name__ == '__main__':
           slow_silent_probs = model.predict(0.9 * np.float32(X_tta_batch))
 
           probs = (probs +
-                   silent_probs +
+                   loud_probs +
                    left_probs +
                    slow_probs + slow_loud_probs + slow_silent_probs) / 10
         else:
-          probs = (probs +
-                   silent_probs +
-                   left_probs) / 3
+          probs = (probs + flipped_probs +
+                   loud_probs + silent_probs +
+                   left_probs) / 5
 
       pred = probs.argmax(axis=-1)
       probabilities.append(probs)
@@ -173,8 +174,9 @@ if __name__ == '__main__':
     if use_tta:
       X_batch_left = np.roll(np.float32(X_batch), -800, axis=1)
       left_probs = model.predict(X_batch_left)
+      loud_probs = model.predict(1.1 * np.float32(X_batch))
       silent_probs = model.predict(0.9 * np.float32(X_batch))
-      # flipped_probs = model.predict(-1.0 * np.float32(X_batch))
+      flipped_probs = model.predict(-1.0 * np.float32(X_batch))
       if use_speed_tta:
         slow_probs = model.predict(np.float32(X_tta_batch))
         slow_loud_probs = model.predict(
@@ -182,13 +184,13 @@ if __name__ == '__main__':
         slow_silent_probs = model.predict(0.9 * np.float32(X_tta_batch))
 
         probs = (probs +
-                 silent_probs +
+                 loud_probs +
                  left_probs +
                  slow_probs + slow_loud_probs + slow_silent_probs) / 10
       else:
-        probs = (probs +
-                 silent_probs +
-                 left_probs) / 3
+        probs = (probs + flipped_probs +
+                 loud_probs + silent_probs +
+                 left_probs) / 5
 
     pred = probs.argmax(axis=-1)
     probabilities.append(probs)
@@ -200,11 +202,11 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_188_tta_leftsilent.csv',
+      'submission_190_tta.csv',
       index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_188_tta_leftsilent_all_labels.csv',
+      'submission_190_tta_all_labels.csv',
       index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
@@ -212,6 +214,6 @@ if __name__ == '__main__':
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_188_tta_leftsilent_all_labels_probs.csv',
+      'submission_190_tta_all_labels_probs.csv',
       index=False, compression=None)
   print("Done!")
