@@ -43,7 +43,7 @@ SILENCE_INDEX = 0
 UNKNOWN_WORD_LABEL = '_unknown_'
 UNKNOWN_WORD_INDEX = 1
 BACKGROUND_NOISE_DIR_NAME = '_background_noise_'
-RANDOM_SEED = 59185
+RANDOM_SEED = 777  # 59185
 
 
 def prepare_words_list(wanted_words):
@@ -342,7 +342,7 @@ class AudioProcessor(object):
     # Shift the sample's start position, and pad any gaps with zeros.
     self.time_shift_placeholder_ = tf.placeholder(
         tf.int32, name='timeshift')
-    # TODO(see--): Write test vs np.roll
+    # TODO(see--): Write test with np.roll
     shifted_foreground = tf_roll(
         scaled_foreground, self.time_shift_placeholder_)
     # Mix in background noise.
@@ -353,7 +353,8 @@ class AudioProcessor(object):
     background_mul = tf.multiply(self.background_data_placeholder_,
                                  self.background_volume_placeholder_)
     background_add = tf.add(background_mul, shifted_foreground)
-    self.background_clamp_ = tf.clip_by_value(background_add, -1.0, 1.0)
+    # removed clipping: tf.clip_by_value(background_add, -1.0, 1.0)
+    self.background_clamp_ = background_add
     self.background_clamp_ = tf.reshape(
         self.background_clamp_, (1, model_settings['desired_samples']))
     # Run the spectrogram and MFCC ops to get a 2D 'fingerprint' of the audio.

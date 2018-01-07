@@ -5,8 +5,8 @@ from keras import backend as K
 
 def data_gen(audio_processor, sess,
              batch_size=128,
-             background_frequency=0.8, background_volume_range=0.2,
-             foreground_frequency=0.8, foreground_volume_range=0.2,
+             background_frequency=0.3, background_volume_range=0.15,
+             foreground_frequency=0.5, foreground_volume_range=0.15,
              time_shift_frequency=0.8, time_shift_range=[-1300, 0],
              mode='validation', pseudo_frequency=0.33, flip_frequency=0.5):
   ep_count = 0
@@ -36,13 +36,13 @@ def data_gen(audio_processor, sess,
     if offset > audio_processor.set_size(mode) - batch_size:
       offset = 0
       if mode == 'training':
-        if 5 >= ep_count:
+        if 10 >= ep_count:
           pseudo_frequency = 1.0
-        elif 10 >= ep_count > 5:
-          pseudo_frequency = 0.8
         elif 20 >= ep_count > 10:
-          pseudo_frequency = 0.6
+          pseudo_frequency = 0.8
         elif 30 >= ep_count > 20:
+          pseudo_frequency = 0.6
+        elif 40 >= ep_count > 20:
           pseudo_frequency = 0.4
         else:
           pseudo_frequency = 0.2
