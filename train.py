@@ -45,8 +45,9 @@ if __name__ == '__main__':
       model_settings=model_settings,
       output_representation=output_representation)
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training',
-                       pseudo_frequency=0.314)
-  val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation')
+                       pseudo_frequency=1.0)
+  val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation',
+                     pseudo_frequency=0.0)
   model = speech_model(
       'conv_1d_time_sliced_with_attention',
       model_settings['fingerprint_size'] if output_representation != 'raw' else model_settings['desired_samples'],  # noqa
@@ -61,14 +62,14 @@ if __name__ == '__main__':
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=4, verbose=1, min_lr=1e-5),
-      TensorBoard(log_dir='logs_188'),
+      TensorBoard(log_dir='logs_189'),
       ModelCheckpoint(
-          'checkpoints_188/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5',
+          'checkpoints_189/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5',
           save_best_only=True, monitor='val_categorical_accuracy',
           mode='max')]
   model.fit_generator(
       train_gen, steps_per_epoch=ap.set_size('training') // batch_size,
-      epochs=400, verbose=1, callbacks=callbacks)
+      epochs=100, verbose=1, callbacks=callbacks)
 
   eval_res = model.evaluate_generator(
       val_gen, ap.set_size('validation') // batch_size)

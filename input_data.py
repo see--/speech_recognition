@@ -329,23 +329,27 @@ class AudioProcessor(object):
       model_settings: Information about the current model being trained.
     """
     desired_samples = model_settings['desired_samples']
-    self.wav_filename_placeholder_ = tf.placeholder(tf.string, [])
+    self.wav_filename_placeholder_ = tf.placeholder(
+        tf.string, [], name='filename')
     wav_loader = io_ops.read_file(self.wav_filename_placeholder_)
     wav_decoder = contrib_audio.decode_wav(
         wav_loader, desired_channels=1, desired_samples=desired_samples)
     # Allow the audio sample's volume to be adjusted.
-    self.foreground_volume_placeholder_ = tf.placeholder(tf.float32, [])
+    self.foreground_volume_placeholder_ = tf.placeholder(
+        tf.float32, [], name='foreground_volme')
     scaled_foreground = tf.multiply(wav_decoder.audio,
                                     self.foreground_volume_placeholder_)
     # Shift the sample's start position, and pad any gaps with zeros.
-    self.time_shift_placeholder_ = tf.placeholder(tf.int32)
+    self.time_shift_placeholder_ = tf.placeholder(
+        tf.int32, name='timeshift')
     # TODO(see--): Write test vs np.roll
     shifted_foreground = tf_roll(
         scaled_foreground, self.time_shift_placeholder_)
     # Mix in background noise.
-    self.background_data_placeholder_ = tf.placeholder(tf.float32,
-                                                       [desired_samples, 1])
-    self.background_volume_placeholder_ = tf.placeholder(tf.float32, [])
+    self.background_data_placeholder_ = tf.placeholder(
+        tf.float32, [desired_samples, 1], name='background_data')
+    self.background_volume_placeholder_ = tf.placeholder(
+        tf.float32, [], name='background_volume')
     background_mul = tf.multiply(self.background_data_placeholder_,
                                  self.background_volume_placeholder_)
     background_add = tf.add(background_mul, shifted_foreground)
@@ -523,6 +527,9 @@ class AudioProcessor(object):
              self.mfcc_], feed_dict=input_dict)
         data[i - offset, :] = mfcc_val.flatten()
         raw_data[i - offset, :] = raw_val.flatten()
+      # print("SAMPLE:")
+      # print(input_dict)
+      # print("label", sample['label'])
       label_index = self.word_to_index[sample['label']]
       labels[i - offset, label_index] = 1
 
@@ -554,11 +561,12 @@ class AudioProcessor(object):
     data = np.zeros((sample_count, desired_samples))
     labels = []
     with tf.Session(graph=tf.Graph()) as sess:
-      wav_filename_placeholder = tf.placeholder(tf.string, [])
+      wav_filename_placeholder = tf.placeholder(tf.string, [], name='filename')
       wav_loader = io_ops.read_file(wav_filename_placeholder)
       wav_decoder = contrib_audio.decode_wav(
           wav_loader, desired_channels=1, desired_samples=desired_samples)
-      foreground_volume_placeholder = tf.placeholder(tf.float32, [])
+      foreground_volume_placeholder = tf.placeholder(
+          tf.float32, [], name='foreground_volume')
       scaled_foreground = tf.multiply(wav_decoder.audio,
                                       foreground_volume_placeholder)
       for i in range(sample_count):
