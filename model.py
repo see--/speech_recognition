@@ -816,7 +816,7 @@ def conv_1d_time_sliced_with_attention_model(
   x = _reduce_block(x, 384 * filter_mult, 3)
   x = _reduce_block(x, 512 * filter_mult, 3)
 
-  attention = Dropout(0.314)(Flatten()(x))
+  attention = Dropout(0.4)(Flatten()(x))
   attention = Dense(9, activation='softmax',
                     kernel_regularizer=l2(1e-5))(attention)
   attention = Lambda(lambda x: K.expand_dims(x, axis=-1))(attention)
@@ -825,15 +825,15 @@ def conv_1d_time_sliced_with_attention_model(
   x_max = GlobalMaxPool1D()(attention)
   x_avg = GlobalAveragePooling1D()(x)
   x = Concatenate()([x_max, x_avg])
-  x = Dropout(0.314)(x)
+  x = Dropout(0.4)(x)
   x = Dense(num_classes, activation='softmax', use_bias=False,
             kernel_regularizer=l2(1e-5))(x)
 
   model = Model(input_layer, x, name='conv_1d_time_sliced_with_attention')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=0.743e-3),
+      optimizer=keras.optimizers.RMSprop(lr=1e-3),
       loss=lambda y_true, y_pred: smooth_categorical_crossentropy(
-          y_true, y_pred, label_smoothing=0.0723),
+          y_true, y_pred, label_smoothing=0.1),
       metrics=[keras.metrics.categorical_accuracy])
   return model
 

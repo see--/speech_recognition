@@ -28,11 +28,11 @@ if __name__ == '__main__':
   data_dirs = ['data/train/audio']
   add_pseudo = True
   if add_pseudo:
-    data_dirs.append('data/pseudo/audio')
+    data_dirs.append('data/heng_pseudo')
   output_representation = 'raw'
   sample_rate = 16000
   batch_size = 384
-  classes = get_classes(wanted_only=False, extend_reversed=False)
+  classes = get_classes(wanted_only=True, extend_reversed=False)
   model_settings = prepare_model_settings(
       label_count=len(prepare_words_list(classes)), sample_rate=sample_rate,
       clip_duration_ms=1000, window_size_ms=30.0, window_stride_ms=10.0,
@@ -40,16 +40,16 @@ if __name__ == '__main__':
       output_representation=output_representation)
   ap = AudioProcessor(
       data_dirs=data_dirs, wanted_words=classes,
-      silence_percentage=13.0, unknown_percentage=2.0,
+      silence_percentage=13.0, unknown_percentage=30.0,
       validation_percentage=10.0, testing_percentage=0.0,
       model_settings=model_settings,
       output_representation=output_representation)
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training',
-                       pseudo_frequency=1.0)
+                       pseudo_frequency=0.5)
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation',
                      pseudo_frequency=0.0)
   model = speech_model(
-      'steffeNet',
+      'conv_1d_time_sliced_with_attention',
       model_settings['fingerprint_size'] if output_representation != 'raw' else model_settings['desired_samples'],  # noqa
       num_classes=model_settings['label_count'],
       **model_settings)
@@ -62,9 +62,9 @@ if __name__ == '__main__':
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=4, verbose=1, min_lr=1e-5),
-      TensorBoard(log_dir='logs_192'),
+      TensorBoard(log_dir='logs_193'),
       ModelCheckpoint(
-          'checkpoints_192/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5',
+          'checkpoints_193/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5',
           save_best_only=True, monitor='val_categorical_accuracy',
           mode='max')]
   model.fit_generator(
