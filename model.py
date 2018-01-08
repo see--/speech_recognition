@@ -1700,16 +1700,14 @@ def steffeNet(input_size=16000, num_classes=11, *args, **kwargs):
 
   input_layer = Input(shape=[input_size])
   x = input_layer
-  x = PreprocessRaw(x)
   # add channel dimension
   x = Reshape([-1, 1])(x)
-  x = Conv1D(64, 75, strides=50, padding='same', use_bias=False)(x)
+  x = Conv1D(256, 75, strides=50, padding='same', use_bias=False)(x)
   x = BatchNormalization()(x)
   x = Activation(relu6)(x)
-  x = _context_conv(x, 128, 3, padding='same')
-  for nh in [256, 384, 512, 768, 1024]:
+  x = _context_conv(x, 256, 3, padding='same')
+  for nh in [320, 384, 512, 768, 1024, 1536]:
     x = _residual_block(x, nh, 3, strides=2)
-    x = _residual_block(x, nh, 3)
     x = _residual_block(x, nh, 3)
 
   x_max = GlobalMaxPooling1D()(x)
@@ -1723,7 +1721,7 @@ def steffeNet(input_size=16000, num_classes=11, *args, **kwargs):
   model.compile(
       optimizer=keras.optimizers.RMSprop(lr=1.0e-3),
       loss=lambda y_true, y_pred: smooth_categorical_crossentropy(
-          y_true, y_pred, label_smoothing=0.2),
+          y_true, y_pred, label_smoothing=0.1),
       metrics=[keras.metrics.categorical_accuracy])
   return model
 

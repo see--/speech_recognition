@@ -49,7 +49,7 @@ if __name__ == '__main__':
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation',
                      pseudo_frequency=0.0)
   model = speech_model(
-      'conv_1d_time_sliced_with_attention',
+      'steffeNet',
       model_settings['fingerprint_size'] if output_representation != 'raw' else model_settings['desired_samples'],  # noqa
       num_classes=model_settings['label_count'],
       **model_settings)
@@ -62,9 +62,9 @@ if __name__ == '__main__':
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=4, verbose=1, min_lr=1e-5),
-      TensorBoard(log_dir='logs_191'),
+      TensorBoard(log_dir='logs_192'),
       ModelCheckpoint(
-          'checkpoints_191/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5',
+          'checkpoints_192/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5',
           save_best_only=True, monitor='val_categorical_accuracy',
           mode='max')]
   model.fit_generator(
