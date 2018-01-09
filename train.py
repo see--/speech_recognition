@@ -14,8 +14,7 @@ from IPython import embed  # noqa
 # running_mean: -0.8 | running_std: 7.0
 # mfcc running_mean: -0.67 | running_std: 7.45
 # background_clamp running_mean: -0.00064 | running_std: 0.0774, p5: -0.074, p95: 0.0697  # noqa
-# 10 ** raw - 1.0 running_mean: 0.017 | 10 ** raw - 1.0 running_std: 0.28
-# np.log(11) ~ 2.4
+
 # np.log(12) ~ 2.5
 # np.log(32) ~ 3.5
 # np.log(48) ~ 3.9
@@ -40,12 +39,12 @@ if __name__ == '__main__':
       output_representation=output_representation)
   ap = AudioProcessor(
       data_dirs=data_dirs, wanted_words=classes,
-      silence_percentage=13.0, unknown_percentage=30.0,
+      silence_percentage=10.0, unknown_percentage=60.0,
       validation_percentage=10.0, testing_percentage=0.0,
       model_settings=model_settings,
       output_representation=output_representation)
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training',
-                       pseudo_frequency=0.5)
+                       pseudo_frequency=0.6)
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation',
                      pseudo_frequency=0.0)
   model = speech_model(
@@ -62,9 +61,9 @@ if __name__ == '__main__':
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=4, verbose=1, min_lr=1e-5),
-      TensorBoard(log_dir='logs_193'),
+      TensorBoard(log_dir='logs_194'),
       ModelCheckpoint(
-          'checkpoints_193/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5',
+          'checkpoints_194/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5',
           save_best_only=True, monitor='val_categorical_accuracy',
           mode='max')]
   model.fit_generator(

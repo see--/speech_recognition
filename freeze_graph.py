@@ -15,13 +15,13 @@ from classes import get_classes
 from utils import smooth_categorical_crossentropy
 
 FINAL_TENSOR_NAME = 'labels_softmax'
-FROZEN_PATH = 'tf_files/frozen.pb'
-OPTIMIZED_PATH = 'tf_files/optimized.pb'
+FROZEN_PATH = 'tf_files/frozen_193.pb'
+OPTIMIZED_PATH = 'tf_files/optimized_193.pb'
 
 wanted_classes = get_classes(wanted_only=True)
 all_classes = get_classes(wanted_only=False)
 
-model = load_model('checkpoints_186/ep-053-vl-0.2915.hdf5',
+model = load_model('checkpoints_193/ep-071-vl-0.2578.hdf5',
                    custom_objects={'relu6': relu6,
                                    'DepthwiseConv2D': DepthwiseConv2D,
                                    'overlapping_time_slice_stack':
@@ -43,30 +43,10 @@ wav_decoder = contrib_audio.decode_wav(
 # keras model wants (None, 16000)
 data_reshaped = tf.reshape(wav_decoder.audio, (1, -1))
 # call keras model
-all_probs = model(data_reshaped)
+softmax_probs = model(data_reshaped)
 # remove batch dimension
-all_probs = tf.reshape(all_probs, (-1, ))
-# map classes to 12 wanted classes:
-# 'silence unknown', 'stop down off right up go on yes left no'
-# models were trained with 32 classes (including the known unknowns):
-# 'silence unknown', 'sheila nine stop bed four six down bird marvin cat off right seven eight up three happy go zero on wow dog yes five one tree house two left no'  # noqa
-# Note: This is NOT simply summing up the probabilities for
-# the unknown classes (even though it would sum up to 1).
-mapped_classes, unknown_classes = [], []
-mapped_classes.append(all_probs[0])  # silence
-unknown_classes.append(all_probs[1])  # unknown unknown
-# this is safe as we defined them in the same order
-# (e.g. down comes before stop)
-for i, c in enumerate(all_classes):
-  if c in wanted_classes:
-    mapped_classes.append(all_probs[i + 2])
-  else:
-    unknown_classes.append(all_probs[i + 2])
-
-unknown_classes = tf.stack(unknown_classes)
-mapped_classes = [mapped_classes[0], tf.reduce_max(unknown_classes)] + \
-    mapped_classes[1:]
-mapped_probs = tf.nn.softmax(tf.stack(mapped_classes), name=FINAL_TENSOR_NAME)
+softmax_probs = tf.reshape(
+    softmax_probs, (-1, ), name=FINAL_TENSOR_NAME)
 
 frozen_graph_def = graph_util.convert_variables_to_constants(
     sess, sess.graph.as_graph_def(),
