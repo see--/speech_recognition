@@ -14,14 +14,15 @@ from model import relu6, overlapping_time_slice_stack
 from classes import get_classes
 from utils import smooth_categorical_crossentropy
 
+DATA_TENSOR_NAME = 'decoded_sample_data'
 FINAL_TENSOR_NAME = 'labels_softmax'
-FROZEN_PATH = 'tf_files/frozen_193.pb'
-OPTIMIZED_PATH = 'tf_files/optimized_193.pb'
+FROZEN_PATH = 'tf_files/frozen_194.pb'
+OPTIMIZED_PATH = 'tf_files/optimized_194.pb'
 
 wanted_classes = get_classes(wanted_only=True)
 all_classes = get_classes(wanted_only=False)
 
-model = load_model('checkpoints_193/ep-071-vl-0.2578.hdf5',
+model = load_model('checkpoints_194/ep-069-vl-0.2245.hdf5',
                    custom_objects={'relu6': relu6,
                                    'DepthwiseConv2D': DepthwiseConv2D,
                                    'overlapping_time_slice_stack':
@@ -38,7 +39,8 @@ wav_filename_placeholder_ = tf.placeholder(tf.string, [], name='wav_fn')
 wav_loader = io_ops.read_file(wav_filename_placeholder_)
 wav_decoder = contrib_audio.decode_wav(
     wav_loader, desired_channels=1, desired_samples=16000,
-    name='decoded_sample_data')
+    name=DATA_TENSOR_NAME)
+
 # add batch dimension and remove last one
 # keras model wants (None, 16000)
 data_reshaped = tf.reshape(wav_decoder.audio, (1, -1))
