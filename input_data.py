@@ -255,8 +255,15 @@ class AudioProcessor(object):
       # Pick some unknowns to add to each partition of the data set.
       random.shuffle(unknown_index[set_index])
       unknown_size = int(math.ceil(set_size * unknown_percentage / 100))
-      self.data_index[set_index].extend(
-          unknown_index[set_index][:unknown_size])
+      # TODO(see--): Fix this! Make unknown_percentage independant
+      #              from the file (list) we sample from.
+      if set_index != 'pseudo':
+        self.data_index[set_index].extend(
+            unknown_index[set_index][:unknown_size])
+
+      else:
+        self.data_index[set_index].extend(unknown_index[set_index])
+
     # Make sure the ordering is random.
     for set_index in ['validation', 'testing', 'training', 'pseudo']:
       # not really needed since the indices are chosen by random

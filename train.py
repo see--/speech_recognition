@@ -37,14 +37,16 @@ if __name__ == '__main__':
       clip_duration_ms=1000, window_size_ms=30.0, window_stride_ms=10.0,
       dct_coefficient_count=80, num_log_mel_features=60,
       output_representation=output_representation)
+
   ap = AudioProcessor(
       data_dirs=data_dirs, wanted_words=classes,
-      silence_percentage=13.0, unknown_percentage=60.0,
+      silence_percentage=13.0, unknown_percentage=50.0,
       validation_percentage=10.0, testing_percentage=0.0,
       model_settings=model_settings,
       output_representation=output_representation)
+
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training',
-                       pseudo_frequency=0.6)
+                       pseudo_frequency=0.5)
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation',
                      pseudo_frequency=0.0)
   model = speech_model(
@@ -61,9 +63,9 @@ if __name__ == '__main__':
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=4, verbose=1, min_lr=1e-5),
-      TensorBoard(log_dir='logs_195'),
+      TensorBoard(log_dir='logs_196'),
       ModelCheckpoint(
-          'checkpoints_195/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5',
+          'checkpoints_196/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5',
           save_best_only=True, monitor='val_categorical_accuracy',
           mode='max')]
   model.fit_generator(
