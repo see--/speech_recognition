@@ -106,3 +106,22 @@ def smooth_categorical_crossentropy(
 
     return tf.losses.softmax_cross_entropy(
         target, output, label_smoothing=label_smoothing)
+
+
+def lr_schedule(epoch):
+  """This schedule replaces the ReduceLROnPlateau when no validation
+     data is used.
+  """
+  # TODO(see--): Automatically export schedule from tensorboard
+  if epoch <= 22:
+    return 1e-3
+  elif 22 < epoch <= 30:
+    return 1e-3 / 2
+  elif 30 < epoch <= 38:
+    return 1e-3 / 4
+  elif 38 < epoch <= 48:
+    return 1e-3 / 8
+  elif 48 < epoch <= 52:
+    return 1e-3 / 16
+  else:
+    return 1e-3 / 32
