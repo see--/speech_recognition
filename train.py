@@ -1,13 +1,13 @@
 from __future__ import division, print_function
 import tensorflow as tf
 from keras import backend as K
-from keras.callbacks import ModelCheckpoint, LearningRateScheduler
+from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau
 from keras.callbacks import TensorBoard
 from callbacks import ConfusionMatrixCallback
 from model import speech_model, prepare_model_settings
 from input_data import AudioProcessor, prepare_words_list
 from classes import get_classes
-from utils import data_gen, lr_schedule
+from utils import data_gen
 from IPython import embed  # noqa
 
 
@@ -37,16 +37,14 @@ if __name__ == '__main__':
       clip_duration_ms=1000, window_size_ms=30.0, window_stride_ms=10.0,
       dct_coefficient_count=80, num_log_mel_features=60,
       output_representation=output_representation)
-
   ap = AudioProcessor(
       data_dirs=data_dirs, wanted_words=classes,
-      silence_percentage=15.0, unknown_percentage=50.0,
-      validation_percentage=0.0, testing_percentage=0.0,
+      silence_percentage=13.0, unknown_percentage=60.0,
+      validation_percentage=10.0, testing_percentage=0.0,
       model_settings=model_settings,
       output_representation=output_representation)
-
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training',
-                       pseudo_frequency=0.66)
+                       pseudo_frequency=0.6)
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation',
                      pseudo_frequency=0.0)
   model = speech_model(
@@ -56,12 +54,18 @@ if __name__ == '__main__':
       **model_settings)
   # embed()
   callbacks = [
-      LearningRateScheduler(lr_schedule),
-      TensorBoard(log_dir='logs_197'),
+      ConfusionMatrixCallback(
+          val_gen, ap.set_size('validation') // batch_size,
+          wanted_words=prepare_words_list(get_classes(wanted_only=True)),
+          all_words=prepare_words_list(classes),
+          label2int=ap.word_to_index),
+      ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
+                        factor=0.5, patience=4, verbose=1, min_lr=1e-5),
+      TensorBoard(log_dir='logs_198'),
       ModelCheckpoint(
-          'checkpoints_197/ep-{epoch:03d}-loss-{loss:.4f}.hdf5',
-          save_best_only=False, monitor='loss')]
-
+          'checkpoints_198/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5',
+          save_best_only=True, monitor='val_categorical_accuracy',
+          mode='max')]
   model.fit_generator(
       train_gen, steps_per_epoch=ap.set_size('training') // batch_size,
       epochs=100, verbose=1, callbacks=callbacks)
