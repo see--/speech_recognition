@@ -61,9 +61,9 @@ if __name__ == '__main__':
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
                         factor=0.5, patience=4, verbose=1, min_lr=1e-5),
-      TensorBoard(log_dir='logs_198'),
+      TensorBoard(log_dir='logs_199'),
       ModelCheckpoint(
-          'checkpoints_198/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5',
+          'checkpoints_199/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5',
           save_best_only=True, monitor='val_categorical_accuracy',
           mode='max')]
   model.fit_generator(
