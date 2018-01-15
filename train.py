@@ -39,7 +39,7 @@ if __name__ == '__main__':
       output_representation=output_representation)
   ap = AudioProcessor(
       data_dirs=data_dirs, wanted_words=classes,
-      silence_percentage=14.0, unknown_percentage=45.0,
+      silence_percentage=13.0, unknown_percentage=50.0,
       validation_percentage=10.0, testing_percentage=0.0,
       model_settings=model_settings,
       output_representation=output_representation)
