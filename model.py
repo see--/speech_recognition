@@ -35,7 +35,7 @@ def _depthwise_conv_block(
         x, num_filter, k, padding='same', use_bias=False,
         dilation_rate=1, intermediate_activation=False,
         strides=1, l2_reg=1e-5):
-  # TODO(someone): Implement DepthwiseConv1D
+  # TODO(fchollet): Implement DepthwiseConv1D
   x = Lambda(lambda x: K.expand_dims(x, 1))(x)
   x = DepthwiseConv2D(
       (1, k), padding=padding, use_bias=use_bias,
@@ -76,7 +76,7 @@ def overlapping_time_slice_stack(x, ksize, stride, padding='SAME'):
     return x_slices
 
 
-def snn_model(input_size=16000, num_classes=12):
+def snn_model(input_size=16000, num_classes=11):
   input_layer = Input(shape=[input_size])
   activation = 'selu'
   kernel_initializer = 'lecun_normal'
@@ -99,7 +99,7 @@ def snn_model(input_size=16000, num_classes=12):
   return model
 
 
-def simple_model(input_size=16000, num_classes=12):
+def simple_model(input_size=16000, num_classes=11):
   input_layer = Input(shape=[input_size])
   x = input_layer
   x = Preprocess(x)
@@ -113,7 +113,7 @@ def simple_model(input_size=16000, num_classes=12):
   return model
 
 
-def conv_1d_simple_model(input_size=16000, num_classes=12):
+def conv_1d_simple_model(input_size=16000, num_classes=11):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -156,7 +156,7 @@ def conv_1d_simple_model(input_size=16000, num_classes=12):
   return model
 
 
-def conv_1d_inception_model(input_size=16000, num_classes=12):
+def conv_1d_inception_model(input_size=16000, num_classes=11):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -254,7 +254,7 @@ def conv_1d_inception_model(input_size=16000, num_classes=12):
   return model
 
 
-def conv_1d_time_stacked_model(input_size=16000, num_classes=12):
+def conv_1d_time_stacked_model(input_size=16000, num_classes=11):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -309,7 +309,7 @@ def conv_1d_time_stacked_model(input_size=16000, num_classes=12):
   return model
 
 
-def conv_inception_d1_model(input_size=16000, num_classes=12):
+def conv_inception_d1_model(input_size=16000, num_classes=11):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -406,7 +406,7 @@ def conv_inception_d1_model(input_size=16000, num_classes=12):
   return model
 
 
-def conv_1d_heavy_model(input_size=16000, num_classes=12):
+def conv_1d_heavy_model(input_size=16000, num_classes=11):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -467,7 +467,7 @@ def conv_1d_heavy_model(input_size=16000, num_classes=12):
   return model
 
 
-def conv_1d_gru_model(input_size=16000, num_classes=12):
+def conv_1d_gru_model(input_size=16000, num_classes=11):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -512,7 +512,7 @@ def conv_1d_gru_model(input_size=16000, num_classes=12):
   return model
 
 
-def conv_2d_model(input_size=16000, num_classes=12):
+def conv_2d_model(input_size=16000, num_classes=11):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = True. This is the keras version of:
   https://github.com/tensorflow/tensorflow/blob/master/tensorflow/examples/speech_commands/models.py#L165-L270  # noqa
@@ -544,7 +544,7 @@ def conv_2d_model(input_size=16000, num_classes=12):
   return model
 
 
-def conv_2d_mobile_model(input_size=16000, num_classes=12):
+def conv_2d_mobile_model(input_size=16000, num_classes=11):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = True. This is the keras version of:
   https://github.com/tensorflow/tensorflow/blob/master/tensorflow/examples/speech_commands/models.py#L165-L270  # noqa
@@ -594,7 +594,7 @@ def conv_2d_mobile_model(input_size=16000, num_classes=12):
   return model
 
 
-def conv_2d_fast_model(input_size=16000, num_classes=12):
+def conv_2d_fast_model(input_size=16000, num_classes=11):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = True. This is the keras version of:
   https://github.com/tensorflow/tensorflow/blob/master/tensorflow/examples/speech_commands/models.py#L165-L270  # noqa
@@ -639,7 +639,7 @@ def conv_2d_fast_model(input_size=16000, num_classes=12):
   return model
 
 
-def conv_1d_fast_model(input_size=16000, num_classes=12):
+def conv_1d_fast_model(input_size=16000, num_classes=11):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -713,7 +713,7 @@ def conv_1d_fast_model(input_size=16000, num_classes=12):
   return model
 
 
-def conv_1d_time_sliced_model(input_size=16000, num_classes=12, filter_mult=1):
+def conv_1d_time_sliced_model(input_size=16000, num_classes=11, filter_mult=1):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -773,7 +773,7 @@ def conv_1d_time_sliced_model(input_size=16000, num_classes=12, filter_mult=1):
 
 
 def conv_1d_time_sliced_with_attention_model(
-        input_size=16000, num_classes=12, filter_mult=1):
+        input_size=16000, num_classes=11, filter_mult=1):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -784,6 +784,7 @@ def conv_1d_time_sliced_with_attention_model(
   """
   input_layer = Input(shape=[input_size])
   x = input_layer
+  x = PreprocessRaw(x)
 
   def _reduce_conv(x, num_filters, k, strides=2, padding='valid'):
     x = _depthwise_conv_block(
@@ -822,7 +823,7 @@ def conv_1d_time_sliced_with_attention_model(
 
   attention = Multiply()([x, attention])
   x_max = GlobalMaxPool1D()(attention)
-  x_avg = GlobalAveragePooling1D()(attention)
+  x_avg = GlobalAveragePooling1D()(x)
   x = Concatenate()([x_max, x_avg])
   x = Dropout(0.4)(x)
   x = Dense(num_classes, activation='softmax', use_bias=False,
@@ -830,14 +831,14 @@ def conv_1d_time_sliced_with_attention_model(
 
   model = Model(input_layer, x, name='conv_1d_time_sliced_with_attention')
   model.compile(
-      optimizer=keras.optimizers.SGD(lr=5e-4, momentum=0.95),
+      optimizer=keras.optimizers.RMSprop(lr=1e-3),
       loss=lambda y_true, y_pred: smooth_categorical_crossentropy(
           y_true, y_pred, label_smoothing=0.1),
       metrics=[keras.metrics.categorical_accuracy])
   return model
 
 
-def conv_1d_residual_model(input_size=16000, num_classes=12, filter_mult=1):
+def conv_1d_residual_model(input_size=16000, num_classes=11, filter_mult=1):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -908,7 +909,7 @@ def conv_1d_residual_model(input_size=16000, num_classes=12, filter_mult=1):
 
 
 def xception_with_attention_model(
-        input_size=16000, num_classes=12, filter_mult=1):
+        input_size=16000, num_classes=11, filter_mult=1):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -982,7 +983,7 @@ def xception_with_attention_model(
   return model
 
 
-def conv_1d_time_sliced_group_model(input_size=16000, num_classes=12):
+def conv_1d_time_sliced_group_model(input_size=16000, num_classes=11):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -1076,7 +1077,7 @@ def conv_1d_time_sliced_group_model(input_size=16000, num_classes=12):
   return model
 
 
-def conv_1d_multi_time_sliced_model(input_size=16000, num_classes=12):
+def conv_1d_multi_time_sliced_model(input_size=16000, num_classes=11):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -1155,7 +1156,7 @@ def conv_1d_multi_time_sliced_model(input_size=16000, num_classes=12):
   return model
 
 
-def conv_1d_learned_spec_model(input_size=16000, num_classes=12):
+def conv_1d_learned_spec_model(input_size=16000, num_classes=11):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -1245,7 +1246,7 @@ def conv_1d_learned_spec_model(input_size=16000, num_classes=12):
   return model
 
 
-def conv_1d_spec_model(input_size=16000, num_classes=12):
+def conv_1d_spec_model(input_size=16000, num_classes=11):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -1322,7 +1323,7 @@ def conv_1d_spec_model(input_size=16000, num_classes=12):
   return model
 
 
-def conv_1d_top_down_model(input_size=16000, num_classes=12):
+def conv_1d_top_down_model(input_size=16000, num_classes=11):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -1397,7 +1398,7 @@ def conv_1d_top_down_model(input_size=16000, num_classes=12):
 
 
 def conv_1d_log_mfcc_model(
-        input_size=16000, num_classes=12, *args, **kwargs):
+        input_size=16000, num_classes=11, *args, **kwargs):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = True.
   Args:
@@ -1479,7 +1480,7 @@ def conv_1d_log_mfcc_model(
 
 
 def conv_1d_spectrogram_model(
-        input_size=16000, num_classes=12, *args, **kwargs):
+        input_size=16000, num_classes=11, *args, **kwargs):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = True.
   Args:
@@ -1561,7 +1562,7 @@ def conv_1d_spectrogram_model(
 
 
 def conv_1d_mfcc_and_raw_model(
-        input_size=16000, num_classes=12, *args, **kwargs):
+        input_size=16000, num_classes=11, *args, **kwargs):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = True.
   Args:
@@ -1659,7 +1660,7 @@ def conv_1d_mfcc_and_raw_model(
   return model
 
 
-def steffeNet(input_size=16000, num_classes=12, *args, **kwargs):
+def steffeNet(input_size=16000, num_classes=11, *args, **kwargs):
   """ Creates a 1D model for temporal data. Note: Use only
   with compute_mfcc = False (e.g. raw waveform data).
   Args:
@@ -1725,7 +1726,7 @@ def steffeNet(input_size=16000, num_classes=12, *args, **kwargs):
   return model
 
 
-def speech_model(model_type, input_size, num_classes=12, *args, **kwargs):
+def speech_model(model_type, input_size, num_classes=11, *args, **kwargs):
   if model_type == 'simple':
     return simple_model(input_size, num_classes)
   elif model_type == 'snn':

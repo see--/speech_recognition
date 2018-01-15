@@ -7,7 +7,7 @@ def data_gen(audio_processor, sess,
              batch_size=128,
              background_frequency=0.3, background_volume_range=0.15,
              foreground_frequency=0.3, foreground_volume_range=0.15,
-             time_shift_frequency=0.3, time_shift_range=[-600, 0],
+             time_shift_frequency=0.3, time_shift_range=[-400, 0],
              mode='validation', pseudo_frequency=0.33, flip_frequency=0.0,
              silence_volume_range=0.35):
   ep_count = 0
