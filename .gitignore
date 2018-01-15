@@ -1,7 +1,6 @@
 data
 logs*
 checkpoints*
-*.csv
 *.txt
 *.gz
 *.ipynb
