@@ -7,9 +7,9 @@ def data_gen(audio_processor, sess,
              batch_size=128,
              background_frequency=0.3, background_volume_range=0.15,
              foreground_frequency=0.3, foreground_volume_range=0.15,
-             time_shift_frequency=0.3, time_shift_range=[-400, 0],
+             time_shift_frequency=0.3, time_shift_range=[-500, 0],
              mode='validation', pseudo_frequency=0.33, flip_frequency=0.0,
-             silence_volume_range=0.45):
+             silence_volume_range=0.3):
   ep_count = 0
   offset = 0
   if mode != 'training':
@@ -106,22 +106,3 @@ def smooth_categorical_crossentropy(
 
     return tf.losses.softmax_cross_entropy(
         target, output, label_smoothing=label_smoothing)
-
-
-def lr_schedule(epoch):
-  """This schedule replaces the ReduceLROnPlateau when no validation
-     data is used.
-  """
-  # TODO(see--): Automatically export schedule from tensorboard
-  if epoch <= 22:
-    return 1e-3
-  elif 22 < epoch <= 30:
-    return 1e-3 / 2
-  elif 30 < epoch <= 38:
-    return 1e-3 / 4
-  elif 38 < epoch <= 48:
-    return 1e-3 / 8
-  elif 48 < epoch <= 52:
-    return 1e-3 / 16
-  else:
-    return 1e-3 / 32

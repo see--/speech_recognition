@@ -39,7 +39,7 @@ if __name__ == '__main__':
       output_representation=output_representation)
   ap = AudioProcessor(
       data_dirs=data_dirs, wanted_words=classes,
-      silence_percentage=15.0, unknown_percentage=35.0,
+      silence_percentage=13.0, unknown_percentage=60.0,
       validation_percentage=10.0, testing_percentage=0.0,
       model_settings=model_settings,
       output_representation=output_representation)
@@ -60,10 +60,10 @@ if __name__ == '__main__':
           all_words=prepare_words_list(classes),
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
-                        factor=0.5, patience=5, verbose=1, min_lr=1e-5),
-      TensorBoard(log_dir='logs_209'),
+                        factor=0.5, patience=4, verbose=1, min_lr=1e-5),
+      TensorBoard(log_dir='logs_210'),
       ModelCheckpoint(
-          'checkpoints_209/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5',
+          'checkpoints_210/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5',
           save_best_only=True, monitor='val_categorical_accuracy',
           mode='max')]
   model.fit_generator(
