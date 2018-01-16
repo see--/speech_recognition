@@ -21,7 +21,7 @@ from IPython import embed  # noqa
 # 64727 training files
 if __name__ == '__main__':
   # restrict gpu usage: https://stackoverflow.com/questions/34199233/how-to-prevent-tensorflow-from-allocating-the-totality-of-a-gpu-memory  # noqa
-  gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.9)
+  gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.95)
   sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
   K.set_session(sess)
   data_dirs = ['data/train/audio']
@@ -39,12 +39,12 @@ if __name__ == '__main__':
       output_representation=output_representation)
   ap = AudioProcessor(
       data_dirs=data_dirs, wanted_words=classes,
-      silence_percentage=10.0, unknown_percentage=30.0,
+      silence_percentage=15.0, unknown_percentage=35.0,
       validation_percentage=10.0, testing_percentage=0.0,
       model_settings=model_settings,
       output_representation=output_representation)
   train_gen = data_gen(ap, sess, batch_size=batch_size, mode='training',
-                       pseudo_frequency=0.7)
+                       pseudo_frequency=0.6)
   val_gen = data_gen(ap, sess, batch_size=batch_size, mode='validation',
                      pseudo_frequency=0.0)
   model = speech_model(
@@ -60,10 +60,10 @@ if __name__ == '__main__':
           all_words=prepare_words_list(classes),
           label2int=ap.word_to_index),
       ReduceLROnPlateau(monitor='val_categorical_accuracy', mode='max',
-                        factor=0.5, patience=4, verbose=1, min_lr=1e-5),
-      TensorBoard(log_dir='logs_208'),
+                        factor=0.5, patience=5, verbose=1, min_lr=1e-5),
+      TensorBoard(log_dir='logs_209'),
       ModelCheckpoint(
-          'checkpoints_208/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5',
+          'checkpoints_209/ep-{epoch:03d}-vl-{val_loss:.4f}.hdf5',
           save_best_only=True, monitor='val_categorical_accuracy',
           mode='max')]
   model.fit_generator(

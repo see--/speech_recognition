@@ -831,9 +831,9 @@ def conv_1d_time_sliced_with_attention_model(
 
   model = Model(input_layer, x, name='conv_1d_time_sliced_with_attention')
   model.compile(
-      optimizer=keras.optimizers.RMSprop(lr=1e-3),
+      optimizer=keras.optimizers.RMSprop(lr=0.87e-3),
       loss=lambda y_true, y_pred: smooth_categorical_crossentropy(
-          y_true, y_pred, label_smoothing=0.1),
+          y_true, y_pred, label_smoothing=0.15),
       metrics=[keras.metrics.categorical_accuracy])
   return model
 
