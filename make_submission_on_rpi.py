@@ -20,7 +20,7 @@ def load_graph(filename):
 if __name__ == '__main__':
   # requirements:
   # https://www.kaggle.com/c/tensorflow-speech-recognition-challenge#Prizes
-  frozen_graph_def = 'tf_files/frozen_193.pb'
+  frozen_graph_def = 'tf_files/frozen_206.pb'
   batch_size = 1  # batch dimension should be 1
   data_tensor_name = 'decoded_sample_data:0'
   rate_tensor_name = 'decoded_sample_data:1'
@@ -68,5 +68,5 @@ if __name__ == '__main__':
       batch_counter = 0
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'rpi_submission_193.csv',
+      'rpi_submission_206.csv',
       index=False, compression=None)

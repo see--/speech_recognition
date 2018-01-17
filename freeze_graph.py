@@ -16,25 +16,24 @@ from utils import smooth_categorical_crossentropy
 
 DATA_TENSOR_NAME = 'decoded_sample_data'
 FINAL_TENSOR_NAME = 'labels_softmax'
-FROZEN_PATH = 'tf_files/frozen_194.pb'
-OPTIMIZED_PATH = 'tf_files/optimized_194.pb'
-
+FROZEN_PATH = 'tf_files/frozen_206.pb'
+# OPTIMIZED_PATH = 'tf_files/optimized_206.pb'
 wanted_classes = get_classes(wanted_only=True)
 all_classes = get_classes(wanted_only=False)
+custom_objects = {
+    'relu6': relu6, 'DepthwiseConv2D': DepthwiseConv2D,
+    'overlapping_time_slice_stack': overlapping_time_slice_stack,
+    'softmax': softmax, '<lambda>': smooth_categorical_crossentropy}
 
-model = load_model('checkpoints_194/ep-069-vl-0.2245.hdf5',
-                   custom_objects={'relu6': relu6,
-                                   'DepthwiseConv2D': DepthwiseConv2D,
-                                   'overlapping_time_slice_stack':
-                                   overlapping_time_slice_stack,
-                                   'softmax': softmax,
-                                   '<lambda>':
-                                   smooth_categorical_crossentropy})
+
+model = load_model('checkpoints_206/ep-064-vl-0.2328.hdf5',
+                   custom_objects=custom_objects)
 
 # rename placeholders for special prize:
 # https://www.kaggle.com/c/tensorflow-speech-recognition-challenge#Prizes
 # decoded_sample_data:0, taking a [16000, 1] float tensor as input,
 # representing the audio PCM-encoded data.
+# `decode_wav` will produce two outputs. tf names them: 'name:0', 'name:1'.
 wav_filename_placeholder_ = tf.placeholder(tf.string, [], name='wav_fn')
 wav_loader = io_ops.read_file(wav_filename_placeholder_)
 wav_decoder = contrib_audio.decode_wav(
