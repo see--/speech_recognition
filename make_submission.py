@@ -1,9 +1,9 @@
+from keras import backend as K
 from glob import glob
 import os
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from keras import backend as K
 from keras.models import load_model
 from model import prepare_model_settings, relu6, overlapping_time_slice_stack
 from keras.applications.mobilenet import DepthwiseConv2D
@@ -11,7 +11,6 @@ from keras.activations import softmax
 from input_data import prepare_words_list, AudioProcessor
 from classes import get_classes, get_int2label
 from utils import smooth_categorical_crossentropy
-from IPython import embed  # noqa
 
 
 def map_to_valid(labels):
@@ -37,12 +36,12 @@ if __name__ == '__main__':
   sess = K.get_session()
   K.set_learning_phase(0)
   sample_rate = 16000
-  use_tta = False
+  use_tta = True
   use_speed_tta = False
   if use_speed_tta:
     tta_fns = sorted(glob('data/tta_test/audio/*.wav'))
     assert len(test_fns) == len(tta_fns)
-  wanted_only = True
+  wanted_only = False
   extend_reversed = False
   output_representation = 'raw'
   batch_size = 384
@@ -62,15 +61,14 @@ if __name__ == '__main__':
       validation_percentage=10.0, testing_percentage=0.0,
       model_settings=model_settings,
       output_representation=output_representation)
-  model = load_model('checkpoints_210/ep-056-vl-0.2266.hdf5',
+  model = load_model('checkpoints_106/ep-062-vl-0.1815.hdf5',
                      custom_objects={'relu6': relu6,
                                      'DepthwiseConv2D': DepthwiseConv2D,
                                      'overlapping_time_slice_stack':
                                      overlapping_time_slice_stack,
-                                     softmax: softmax,
+                                     'softmax': softmax,
                                      '<lambda>':
                                      smooth_categorical_crossentropy})
-  # embed()
 
   # In wanted_labels we map the not wanted words to `unknown`. Though we
   # keep track of all labels in `labels`.
@@ -198,11 +196,11 @@ if __name__ == '__main__':
     wanted_labels.extend(pred_labels)
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'submission_210.csv',
+      'REPR_submission_106_tta_leftloud.csv',
       index=False, compression=None)
 
   pd.DataFrame({'fname': fns, 'label': labels}).to_csv(
-      'submission_210_all_labels.csv',
+      'REPR_submission_106_tta_leftloud_all_labels.csv',
       index=False, compression=None)
 
   probabilities = np.concatenate(probabilities, axis=0)
@@ -210,6 +208,6 @@ if __name__ == '__main__':
   for i, l in int2label.items():
     all_data[l] = probabilities[:, i]
   all_data.to_csv(
-      'submission_210_all_labels_probs.csv',
+      'REPR_submission_106_tta_leftloud_all_labels_probs.csv',
       index=False, compression=None)
   print("Done!")

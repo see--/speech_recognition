@@ -5,8 +5,8 @@ import os
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from input_data import prepare_words_list
-from classes import get_classes, get_int2label
+import argparse
+from classes import get_int2label
 
 
 def load_graph(filename):
@@ -17,28 +17,67 @@ def load_graph(filename):
     tf.import_graph_def(graph_def, name='')
 
 
-if __name__ == '__main__':
+def main():
   # requirements:
   # https://www.kaggle.com/c/tensorflow-speech-recognition-challenge#Prizes
-  frozen_graph_def = 'tf_files/frozen_206.pb'
   batch_size = 1  # batch dimension should be 1
-  data_tensor_name = 'decoded_sample_data:0'
-  rate_tensor_name = 'decoded_sample_data:1'
-  output_tensor_name = 'labels_softmax:0'
+  parser = argparse.ArgumentParser()
+  parser.add_argument(
+      '--frozen_graph',
+      type=str,
+      default='tf_files/frozen.pb',
+      help="""\
+      Path to frozen graph.\
+      """)
+  parser.add_argument(
+      '--data_tensor',
+      type=str,
+      default='decoded_sample_data:0',
+      help="""\
+      Input data tensor name. Leave as is for the
+      competition.\
+      """)
+  parser.add_argument(
+      '--rate_tensor',
+      type=str,
+      default='decoded_sample_data:1',
+      help="""\
+      Input rate tensor name. Leave as is for the
+      competition.\
+      """)
+  parser.add_argument(
+      '--output_tensor',
+      type=str,
+      default='labels_softmax:0',
+      help="""\
+      Name of the softmax output tensor. Leave as is for the
+      competition.\
+      """)
+  parser.add_argument(
+      '--test_data',
+      type=str,
+      default='data/test/audio',
+      help="""\
+      Path to the test wav files directory.\
+      """)
+  parser.add_argument(
+      '--submission_fn',
+      type=str,
+      default='rpi_submission.csv',
+      help="""\
+      The submission's filename.\
+      """)
 
-  test_fns = sorted(glob('data/test/audio/*.wav'))
+  args, unparsed = parser.parse_known_args()
+  test_fns = sorted(glob(os.path.join(args.test_data, '*.wav')))
   sess = tf.Session()
   sample_rate = 16000
-  use_tta = False
   wanted_only = True
-  output_representation = 'raw'
-  wanted_words = prepare_words_list(get_classes(wanted_only=True))
-  classes = get_classes(wanted_only=wanted_only)
   int2label = get_int2label(wanted_only=wanted_only)
-  load_graph(frozen_graph_def)
-  data_tensor = sess.graph.get_tensor_by_name(data_tensor_name)
-  rate_tensor = sess.graph.get_tensor_by_name(rate_tensor_name)
-  output_tensor = sess.graph.get_tensor_by_name(output_tensor_name)
+  load_graph(args.frozen_graph)
+  data_tensor = sess.graph.get_tensor_by_name(args.data_tensor)
+  rate_tensor = sess.graph.get_tensor_by_name(args.rate_tensor)
+  output_tensor = sess.graph.get_tensor_by_name(args.output_tensor)
 
   fns, wanted_labels, probabilities = [], [], []
   batch_counter = 0
@@ -68,5 +107,9 @@ if __name__ == '__main__':
       batch_counter = 0
 
   pd.DataFrame({'fname': fns, 'label': wanted_labels}).to_csv(
-      'rpi_submission_206.csv',
+      args.submission_fn,
       index=False, compression=None)
+
+
+if __name__ == '__main__':
+  main()
