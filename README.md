@@ -55,9 +55,9 @@ Only the predicted probabilites by the model from experiment 106 made it to our 
 I trained a lot more but this one was the best. This model is trained with pseudo labels. So the first step is to reproduce them:
 ```
 git checkout 6892d80
-git checkout master submission_091_leftloud_tta_all_labels.csv submission_096_leftloud_tta_all_labels.csv submission_098_leftloud_tta_all_labels.csv reproduce/explore.ipynb
+git checkout master submission_091_leftloud_tta_all_labels.csv submission_096_leftloud_tta_all_labels.csv submission_098_leftloud_tta_all_labels.csv REPR_explore.ipynb
 python3 generate_noise.py
-jupyter notebook reproduce/explore.ipynb
+jupyter notebook REPR_explore.ipynb
 ```
 Then run the Notebook cells that produces the pseudo labels: the first one and the 3 cells following: **# Create pseudo labels from consistent predictions
 **. Later in the competition this step is replaced by the `create_pseudo_with_thresh.py` script. To train the model run:
