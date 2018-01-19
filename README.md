@@ -60,7 +60,7 @@ python3 generate_noise.py
 jupyter notebook REPR_explore.ipynb
 ```
 Then run the Notebook cells that produces the pseudo labels: the first one and the 3 cells following: **# Create pseudo labels from consistent predictions
-**. Later in the competition this step is replaced by the `create_pseudo_with_thresh.py` script. To train the model run:
+**. Later in the competition this step is replaced by the `create_pseudo_with_thresh.py` script. Close the notebook (otherwise the GPU memory is still occupied) and train the model:
 ```
 python3 train.py
 ```
