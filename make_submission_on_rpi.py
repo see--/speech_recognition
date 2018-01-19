@@ -1,5 +1,7 @@
 import tensorflow as tf
-from scipy.io import wavfile
+import wave
+import struct
+# from scipy.io import wavfile
 from glob import glob
 import os
 import numpy as np
@@ -15,6 +17,17 @@ def load_graph(filename):
     graph_def = tf.GraphDef()
     graph_def.ParseFromString(f.read())
     tf.import_graph_def(graph_def, name='')
+
+
+def wavfile_read(filename):
+  """Read wavfile. Only tested for the speech recognition data."""
+  with wave.open(filename, 'r') as f:
+    nframes = f.getnframes()
+    data = []
+    for _ in range(nframes):
+      frame_data = f.readframes(1)
+      data.append(struct.unpack("<h", frame_data)[0])
+  return np.int16(data)
 
 
 def main():
@@ -83,10 +96,10 @@ def main():
   batch_counter = 0
   X_batch = []
 
-  for i in tqdm(range(len(test_fns[:]))):
+  for i in tqdm(range(len(test_fns[:500]))):
     test_fn = test_fns[i]
     fns.append(os.path.basename(test_fn))
-    rate, wav_data = wavfile.read(test_fn)
+    wav_data = wavfile_read(test_fn)
     # assert rate == 16000
     wav_data = np.float32(wav_data) / 32767
     # assert len(wav_data) == 16000
