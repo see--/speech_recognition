@@ -59,7 +59,7 @@ git checkout master submission_091_leftloud_tta_all_labels.csv submission_096_le
 python3 generate_noise.py
 jupyter notebook reproduce/explore.ipynb
 ```
-Then run the Notebook cells that produce the pseudo labels: the first one and the 3 cells following: **# Create pseudo labels from consistent predictions
+Then run the Notebook cells that produces the pseudo labels: the first one and the 3 cells following: **# Create pseudo labels from consistent predictions
 **. Later in the competition this step is replaced by the `create_pseudo_with_thresh.py` script. To train the model run:
 ```
 python3 train.py
@@ -68,12 +68,15 @@ For the submission, I selected the checkpoint with the highest validation accura
 ```
 tensorboard --logdir logs_106
 ```
-The reference model is `checkpoints_106/ep-062-vl-0.1815.hdf5`. Note that this step itself requires submissions by other networks. To train these models run ....
+The reference model is `checkpoints_106/ep-062-vl-0.1815.hdf5`. This experiment itself requires submissions by other networks. To train these models run ....
 
  Note that due to stochasticity (random initialization, data augmentation and me not setting a seed) exactly reproducing these weights is probably not possible.
 
 ## Make the submission using TTA
-`python3 make_submission.py`: The resulting submission will have a private/public score of 0.88558/0.88349. Every sample is used three times (unchanged, shifted to the left by 1500 timesteps and made louder by multiplying with 1.2). The resulting probabilities are then averaged. Note that this model uses 32 classes. These probabilities will be stored in `REPR_submission_106_tta_leftloud_all_labels_probs.csv`. In order to use them for the ensembled model the order of the samples and the probabilities have to be converted: `python3 convert_from_see_v3_bugfix.py`.
+```
+python3 make_submission.py
+```
+The resulting submission will have a private/public score of 0.88558/0.88349. Every sample is used three times (unchanged, shifted to the left by 1500 timesteps and made louder by multiplying with 1.2). The resulting probabilities are then averaged. Note that this model uses 32 classes. These probabilities will be stored in `REPR_submission_106_tta_leftloud_all_labels_probs.csv`. In order to use them for the ensembled model the order of the samples and the probabilities have to be converted: `python3 convert_from_see_v3_bugfix.py`.
 
 ## Raspberry Pi model
 This model is trained with pseudo labels from our best ensembled submission: `submit_50_probs.uint8.memmap`. To train this model run:
