@@ -70,7 +70,7 @@ AUDIO_NUM_CLASSES = len(AUDIO_NAMES)
 int2label = get_int2label(wanted_only=False)
 label2int = get_label2int(wanted_only=False)
 
-see_file = '../submission_106_tta_leftloud_all_labels_probs.csv'
+see_file = 'REPR_submission_106_tta_leftloud_all_labels_probs.csv'
 memmap_file = 'submission_106_tta_leftloud_all_labels_probs.uint8.memmap'
 
 see_df = pd.read_csv(see_file)

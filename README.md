@@ -31,7 +31,7 @@ For the special price the restrictions were: the network is smaller than 5.000.0
 - Test time augmentation: It is a simple way to get some boost. Just augment the samples, feed them multiple times and average the probabilities. I tried the following: time-shifting, increase/decrease the volume and time-stretching using `librosa.effects.time_stretch`.
 
 # Structure
-This repo contains all the code (`.py` or `.ipynb`) to reproduce my part of our submission. Keras models checkpoints can be found in `checkpoints_*`, TensorBoard training logs in `logs_*` and frozen TensorFlow graphs in `tf_files`. I am providing these files for the experiments that are required for the final submission. Though, I ran many more. As a result each section of this writeup can be executed independently.
+This repo contains all the code (`.py` or `.ipynb`) to reproduce my part of our submission. You'll find various model definitions in `model.py`, the training script is `train.py` and the scripts to make the submissions are `make_submission.py` (faster as it processes samples in batches) or `make_submission_on_rpi.py` (suitable to create the submission file on the rpi 3: frozen graph, batch size of 1 and fewer dependecies). Keras models checkpoints can be found in `checkpoints_*`, TensorBoard training logs in `logs_*` and frozen TensorFlow graphs in `tf_files`. I am providing these files for the experiments that are required for the final submission. Though, I ran many more. As a result each section of this writeup can be executed independently.
 The data is assumed to be in `data/train` and `data/test`:
 ```
 mkdir data
@@ -62,6 +62,7 @@ jupyter notebook REPR_explore.ipynb
 Then run the Notebook cells that produces the pseudo labels: the first one and the 3 cells following: **# Create pseudo labels from consistent predictions
 **. Later in the competition this step is replaced by the `create_pseudo_with_thresh.py` script. Close the notebook (otherwise the GPU memory is still occupied) and train the model:
 ```
+mkdir checkpoints_106
 python3 train.py
 ```
 For the submission, I selected the checkpoint with the highest validation accuracy using tensorboard:
@@ -72,11 +73,18 @@ The reference model is `checkpoints_106/ep-062-vl-0.1815.hdf5`. This experiment 
 
  Note that due to stochasticity (random initialization, data augmentation and me not setting a seed) exactly reproducing these weights is probably not possible.
 
-## Make the submission using TTA
+## Make the submission using TTA:
 ```
+git checkout master make_submission.py
+git checkout master checkpoints_106/ep-062-vl-0.1815.hdf5  # change line 64 of `make_submission.py` instead of this command if you use another checkpoint
 python3 make_submission.py
 ```
-The resulting submission will have a private/public score of 0.88558/0.88349. Every sample is used three times (unchanged, shifted to the left by 1500 timesteps and made louder by multiplying with 1.2). The resulting probabilities are then averaged. Note that this model uses 32 classes. These probabilities will be stored in `REPR_submission_106_tta_leftloud_all_labels_probs.csv`. In order to use them for the ensembled model the order of the samples and the probabilities have to be converted: `python3 convert_from_see_v3_bugfix.py`.
+
+The resulting submission will have a private/public score of 0.88558/0.88349. Every sample is used three times (unchanged, shifted to the left by 1500 timesteps and made louder by multiplying with 1.2). The resulting probabilities are then averaged. Note that this model uses 32 classes. These probabilities will be stored in `REPR_submission_106_tta_leftloud_all_labels_probs.csv`. In order to use them for the ensembled model the order of the samples and the probabilities have to be converted:
+```
+git checkout master convert_from_see_v3_bugfix.py
+python3 convert_from_see_v3_bugfix.py
+```
 
 ## Raspberry Pi model
 This model is trained with pseudo labels from our best ensembled submission: `submit_50_probs.uint8.memmap`. To train this model run:
@@ -84,10 +92,17 @@ This model is trained with pseudo labels from our best ensembled submission: `su
 git checkout 4f22e26
 python3 train.py
 ```
-For this training I am only saving the checkpoints with the best validation accuracy. Therefore there is no need to inspect the logs. Just use the latest checkpoint.
+For this training I am only saving the checkpoints with the best validation accuracy. Therefore, there is no need to inspect the logs. Just use the latest checkpoint.
 
-To freeze the model run: `python3 freeze_graph.py --checkpoint_path checkpoints_195/ep-085-vl-0.2231.hdf5`. By default, the frozen graph will be saved as `tf_files/frozen.pb`. You can then reproduce the best scoring rpi submission `rpi_submission_195.csv` by running:
+To freeze the model run:
 ```
+git checkout master freeze_graph.py
+git checkout master checkpoints_195/ep-085-vl-0.2231.hdf5  # skip this if you trained the model yourself
+python3 freeze_graph.py --checkpoint_path checkpoints_195/ep-085-vl-0.2231.hdf5
+```
+By default, the frozen graph will be saved as `tf_files/frozen.pb`. You can then reproduce the best scoring rpi submission `rpi_submission_195.csv` by running:
+```
+git checkout master make_submission_on_rpi.py
 python3 make_submission_on_rpi.py --frozen_graph tf_files/frozen.pb --test_data data/test/audio --submission_fn rpi_submission_195.csv
 ```
 This submission will have a score of 0.90825 on the private leaderboard.
