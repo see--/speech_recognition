@@ -8,8 +8,28 @@ Our team (team name: **Heng-Ryan-See \* good bug? \***) won the competition with
 - [Ryan Sun](https://www.kaggle.com/ryansun)
 - [Steffen Eberbach](https://www.kaggle.com/seesee)
 
+# Contact
+- Name: Steffen Eberbach
+- Location: Schriesheim, Germany
+- Email: steffenebe@gmail.com
+
+# Background
+- What your academic/professional background?
+  - I studied at the Karlsruhe Institute of Technology with a focus on robotics/computer vision and prepared my Master's thesis at Daimler's image understanding group.
+- Did you have any prior experience that helped you succeed in this competition?
+  - I already used deep learning for my Master's thesis. Knowing the commonly used terms and how to interpret the learning curves helped a lot.
+- What made you decide to enter this competition?
+  - It was a nice way to learn something new. It was not specifically speech recognition but I wanted to learn TensorFlow/Keras better anyway and the competition seemed like a good project to apply both frameworks.
+- How much time did you spend on the competition?
+  - Way too much :P. I needed some time to get started with audio (i.e. understanding mel features and audio representations). Then I spent (too much) time developing new network architectures. Finally, the last week and writeup took really long as well.
+- If part of a team, how did you decide to team up?
+  - I was somewhat stuck at 88% public leaderboard score and decided to team up. I saw that Heng did some great progression on the leaderboard and wrote him a message.
+- If you competed as part of a team, who did what?
+  - We discussed most problems in the group but everyone had a focus. Heng did all the ensembling. Ryan retrained his models with pseudo labeling and my focus was on the special price.
+
+
 # Overview of my approach
-I started with the provided [tutorial](https://www.tensorflow.org/versions/master/tutorials/audio_recognition) and could easily get better results by just adding momentum to the plain SGD solver (82-83% on the leaderboard). I have no prior experience with audio data and mostly used deep learning with images. For this domain you don't use features but feed the raw pixel values. My thinking was that this should work with audio data as well. Throughout the competition I ran experiments using raw waveforms, spectrograms and log mel features as input. I got similar results using log mel and raw waveform (86%-87%) and used the waveform data for most experiments as it was easier to interpret for me.
+I started with the provided [tutorial](https://www.tensorflow.org/versions/master/tutorials/audio_recognition) and could easily get better results by just adding momentum to the plain SGD solver (82-83% on the leaderboard). I have no prior experience with audio data and mostly used deep learning with images. For this domain you don't use features but feed the raw pixel values. My thinking was that this should also work with audio data. During the competition, I ran experiments using raw waveforms, spectrograms and log mel features as input. I got similar results using log mel and raw waveform (86%-87%) and used the waveform data for most experiments as it was easier to interpret for me.
 
 For the special price the restrictions were: the network is smaller than 5.000.000 bytes and runs in less than 175ms per sample on a stock Raspberry Pi 3. Regarding the size, this allows you to build networks that have roughly 1.250.000 weight parameters. So by experimenting with these restrictions I came up with an architecture that uses Depthwise1D convolutions on the raw waveform. Using [model distillation](https://arxiv.org/pdf/1503.02531.pdf) this network predicts the correct class for 90.8% of the private leaderboard samples and runs in roughly 80ms.
 
@@ -60,12 +80,12 @@ python3 generate_noise.py
 jupyter notebook REPR_explore.ipynb
 ```
 Then run the Notebook cells that produces the pseudo labels: the first one and the 3 cells following: **# Create pseudo labels from consistent predictions
-**. Later in the competition this step is replaced by the `create_pseudo_with_thresh.py` script. Close the notebook (otherwise the GPU memory is still occupied) and train the model:
+**. Later in the competition this step is replaced by the `create_pseudo_with_thresh.py` script. Stop the notebook (otherwise the GPU memory is still occupied; sometimes you have to kill a process on the GPU: `nvidia-smi && kill -9 jupyter_pid`) and train the model:
 ```
 mkdir checkpoints_106
 python3 train.py
 ```
-For the submission, I selected the checkpoint with the highest validation accuracy using tensorboard:
+For the submission, I selected the checkpoint with the highest validation accuracy using TensorBoard:
 ```
 tensorboard --logdir logs_106
 ```
@@ -85,11 +105,14 @@ The resulting submission will have a private/public score of 0.88558/0.88349. Ev
 git checkout master convert_from_see_v3_bugfix.py
 python3 convert_from_see_v3_bugfix.py
 ```
+This will create the file: `submission_106_tta_leftloud_all_labels_probs.uint8.memmap` for our ensemble model.
 
 ## Raspberry Pi model
-This model is trained with pseudo labels from our best ensembled submission: `submit_50_probs.uint8.memmap`. To train this model run:
+This model is trained with pseudo labels from our best ensembled submission: `submit_50_probs.uint8.memmap`. To train this model, first reproduce the pseudo labels using this submission and then run the training script:
 ```
 git checkout 4f22e26
+git checkout master submit_50_probs.uint8.memmap
+python3 create_pseudo_with_thresh.py
 python3 train.py
 ```
 For this training I am only saving the checkpoints with the best validation accuracy. Therefore, there is no need to inspect the logs. Just use the latest checkpoint.
