@@ -15,9 +15,9 @@ Our team (team name: **Heng-Ryan-See \* good bug? \***) won the competition with
 
 # 1.) Background
 - What your academic/professional background?
-  - I studied at the Karlsruhe Institute of Technology with a focus on robotics/computer vision and prepared my Master's thesis at Daimler's image understanding group.
+  - I studied at the Karlsruhe Institute of Technology with a focus on robotics & computer vision and prepared my master's thesis at Daimler's image understanding group.
 - Did you have any prior experience that helped you succeed in this competition?
-  - I already used deep learning for my Master's thesis. Knowing the commonly used terms and how to interpret the learning curves helped a lot.
+  - I already used deep learning for my master's thesis. Knowing the commonly used terms and how to interpret the learning curves helped a lot.
 - What made you decide to enter this competition?
   - It was a nice way to learn something new. It was not specifically speech recognition but I wanted to use TensorFlow/Keras more anyway and the competition seemed like a good project to apply both frameworks.
 - How much time did you spend on the competition?
@@ -48,7 +48,7 @@ For the special price the restrictions were: the network is smaller than 5.000.0
 
 - Pseudo labeling: I used consistent samples from the test set to train new networks. Choosing them was based on a.) my three best models agree on this submission. I used this version at early stages of the competition. b.) using a probability threshold on the predicted softmax probabilities. Typically, using `pseudo_threshold=0.6` were the samples that our ensembled model predicted correctly. I also implemented a schedule for pseudo labels. That is: For the first 5 epochs you only use pseudo labels and then gradually mix in data from the training data set. Though, I didn't have time to run these experiments, so I kept a fixed ratio of training and pseudo data.
 
-- Test time augmentation: It is a simple way to get some boost. Just augment the samples, feed them multiple times and average the probabilities. I tried the following: time-shifting, increase/decrease the volume and time-stretching using `librosa.effects.time_stretch`.
+- Test time augmentation (TTA): It is a simple way to get some boost. Just augment the samples, feed them multiple times and average the probabilities. I tried the following: time-shifting, increase/decrease the volume and time-stretching using `librosa.effects.time_stretch`.
 
 # 3.) Feature Selection
 I experimented with log mel features but eventually just used the raw waveform data.
@@ -59,7 +59,7 @@ I experimented with log mel features but eventually just used the raw waveform d
 - Did you ensemble the models?
   - I think this was the most important part. Our single models were all in the range of 86%-88% accuracy on the public leaderboard. Using an ensemble of these models got us to 90%.
 - If you did ensemble, how did you weight the different models?
-  - Mostly based on the single model performance and by leaderboard score. We even had a typo (wrong filename) which caused one model to have twice the weight it should have. We used this submission as our final (winning) submission. Actually, Ryan proposed better ensemble weights that yielded 0.91107.
+  - Mostly based on the single model performance and by leaderboard score. We even had a typo (wrong filename) which caused one model to have twice the weight it should have. We used this submission as our final (winning) submission. Actually, Ryan proposed better ensemble weights that yielded 0.91107 on the private leaderboard.
 
 # 5.) Interesting findings
 - What do you think set you apart from others in the competition?
@@ -68,14 +68,14 @@ I experimented with log mel features but eventually just used the raw waveform d
 # Appendix
 ##  A1.) Model Execution Time
 - What software did you use for training and prediction?
-  - See Requirements.
-  - What hardware (CPUS spec, number of CPU cores, memory)?
-    - a single GCP instance with 4 vCPUs, 18.5 GB memory and 
+  - see Requirements
+- What hardware (CPUS spec, number of CPU cores, memory)?
+  - a single GCP instance with 4 vCPUs, 18.5 GB memory and 
 1 x NVIDIA Tesla K80
-  - How long does it take to train your model?
-    - ~4-8 hours (depends on the model) for a single model
-  - How long does it take to generate predictions using your model?
-    - ~4 minutes without TTA
+- How long does it take to train your model?
+  - ~4-8 hours (depends on the model) for a single model
+- How long does it take to generate predictions using your model?
+  - ~4 minutes without TTA
 
 ## A2.) Requirements:
 - tensorflow-gpu==1.4.0 
@@ -99,15 +99,14 @@ ln -s your/path/to/test data/test
 
 ## Model training
 Only the predicted probabilites by the model from experiment 106 made it to our final ensemble submission.
-I trained a lot more but this one was the best. This model is trained with pseudo labels. So the first step is to reproduce them:
+I trained a lot more but this one was the best. This model is trained with pseudo labels and additional noise. So the first step is to reproduce these samples:
 ```
 git checkout 6892d80
-git checkout master submission_091_leftloud_tta_all_labels.csv submission_096_leftloud_tta_all_labels.csv submission_098_leftloud_tta_all_labels.csv REPR_explore.ipynb
+git checkout master REPR_106_pseudo.py submission_091_leftloud_tta_all_labels.csv submission_096_leftloud_tta_all_labels.csv submission_098_leftloud_tta_all_labels.csv
 python3 generate_noise.py
-jupyter notebook REPR_explore.ipynb
+python3 REPR_106_pseudo.py
 ```
-Then run the Notebook cells that produces the pseudo labels: the first one and the 3 cells following: **# Create pseudo labels from consistent predictions
-**. Later in the competition this step is replaced by the `create_pseudo_with_thresh.py` script. Stop the notebook (otherwise the GPU memory is still occupied; sometimes you have to kill a process on the GPU: `nvidia-smi && kill -9 jupyter_pid`) and train the model:
+And then train the model:
 ```
 mkdir checkpoints_106
 python3 train.py
@@ -127,7 +126,7 @@ git checkout master checkpoints_106/ep-062-vl-0.1815.hdf5  # change line 64 of `
 python3 make_submission.py
 ```
 
-The resulting submission will have a private/public score of 0.88558/0.88349. Every sample is used three times (unchanged, shifted to the left by 1500 timesteps and made louder by multiplying with 1.2). The resulting probabilities are then averaged. Note that this model uses 32 classes. These probabilities will be stored in `REPR_submission_106_tta_leftloud_all_labels_probs.csv`. In order to use them for the ensembled model the order of the samples and the probabilities have to be converted:
+The resulting submission will have a private/public score of 0.88558/0.88349. Every sample is used three times (unchanged, shifted to the left by 1500 timesteps and made louder by multiplying with 1.2). The resulting probabilities are then averaged. Note that this model uses 32 classes. These probabilities will be stored in `REPR_submission_106_tta_leftloud_all_labels_probs.csv`. In order to use them for the ensembled model the order of the samples and the probabilities have to be converted to 12 classes:
 ```
 git checkout master convert_from_see_v3_bugfix.py
 python3 convert_from_see_v3_bugfix.py
@@ -169,6 +168,3 @@ I got the following results:
 - avg time (ms): 58.042
 - max memory (bytes): 2180436
 - size (bytes): 4870144 (`du -s -B1 tf_files/frozen.pb`)
-
-## A4) References
-[google](http://www.google.de)
