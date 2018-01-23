@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import argparse
-from classes import get_int2label
 
 
 def load_graph(filename):
@@ -85,8 +84,8 @@ def main():
   test_fns = sorted(glob(os.path.join(args.test_data, '*.wav')))
   sess = tf.Session()
   sample_rate = 16000
-  wanted_only = True
-  int2label = get_int2label(wanted_only=wanted_only)
+  classes = '_silence_ _unknown_ sheila nine stop bed four six down bird marvin cat off right seven eight up three happy go zero on wow dog yes five one tree house two left no'.split() # noqa
+  int2label = {i: c for i, c in enumerate(classes)}
   load_graph(args.frozen_graph)
   data_tensor = sess.graph.get_tensor_by_name(args.data_tensor)
   rate_tensor = sess.graph.get_tensor_by_name(args.rate_tensor)
