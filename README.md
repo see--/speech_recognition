@@ -101,7 +101,9 @@ sudo ​pip install \
 To create the whole submission file (`make_submission_on_rpi.py`) you'll need these additional packages (`pip3 install` and I got a `HTTPError` which can be solved by using the  `--default-timeout=100` flag):
 - pandas==0.22.0
 - tqdm==4.19.5
+- scipy==1.0.0 (`sudo pip3 install --default-timeout=100 --no-deps scipy`)
 
+Note that installing scipy will take a couple hours. I tried removing this dependency by using the `wave` and `struct` modules but then reading the wavs is super slow (2 hours for all test files).
 I tested it with Raspbian GNU/Linux 8 (Jessie) and Python 3.4.2.
 
 ## A3.) How To Generate the Solution
@@ -169,12 +171,9 @@ python3 freeze_graph.py --checkpoint_path checkpoints_195/ep-085-vl-0.2231.hdf5 
 ```
 By default, the frozen graph will be saved as `tf_files/frozen.pb`. You can then reproduce the best scoring rpi submission `rpi_submission_195.csv` by running:
 ```
-# Maybe this is not required but I get: `No op named DecodeWav in defined operations.` otherwise.
-python3 strip_unused.py --input_graph tf_files/frozen_195.pb  --output_graph tf_files/frozen_195_stripped.pb --input_node_names decoded_sample_data --output_node_names labels_softmax --input_binary True --output_binary True
-
 # on the pi
 git checkout master
-python3 make_submission_on_rpi.py --frozen_graph tf_files/frozen_195_stripped.pb --test_data data/test/audio --submission_fn rpi_submission_195.csv
+python3 make_submission_on_rpi.py --frozen_graph tf_files/frozen_195.pb --test_data data/test/audio --submission_fn rpi_submission_195.csv
 ```
 This submission will have a score of 0.90825 on the private leaderboard.
 

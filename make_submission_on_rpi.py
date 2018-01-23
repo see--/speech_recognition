@@ -1,4 +1,10 @@
 import tensorflow as tf
+# comment December 11, 2017 at 12:11 am:
+# https://petewarden.com/2017/08/20/cross-compiling-tensorflow-for-the-raspberry-pi
+try:
+  from tensorflow.contrib.framework.python.ops import audio_ops as contrib_audio  # noqa
+except ImportError:
+  from tensorflow.python.ops.gen_audio_ops import *  # noqa
 from scipy.io import wavfile as wf
 from glob import glob
 import os
@@ -71,11 +77,11 @@ def main():
   test_fns = sorted(glob(os.path.join(args.test_data, '*.wav')))
   sess = tf.Session()
   # sample_rate = 16000
-  classes = '_silence_ _unknown_ sheila nine stop bed four six down bird marvin cat off right seven eight up three happy go zero on wow dog yes five one tree house two left no'.split() # noqa
+  classes = '_silence_ _unknown_ stop down off right up go on yes left no'.split() # noqa
   int2label = {i: c for i, c in enumerate(classes)}
   load_graph(args.frozen_graph)
   data_tensor = sess.graph.get_tensor_by_name(args.data_tensor)
-  # rate_tensor = sess.graph.get_tensor_by_name(args.rate_tensor)
+  rate_tensor = sess.graph.get_tensor_by_name(args.rate_tensor)
   output_tensor = sess.graph.get_tensor_by_name(args.output_tensor)
 
   fns, wanted_labels, probabilities = [], [], []
@@ -94,9 +100,8 @@ def main():
 
     batch_counter += 1
     if batch_counter == batch_size:
-      probs = sess.run(output_tensor, {data_tensor: wav_data})
-      # probs = sess.run(
-      #     output_tensor, {data_tensor: wav_data, rate_tensor: sample_rate})
+      probs = sess.run(
+          output_tensor, {data_tensor: wav_data, rate_tensor: rate})
       pred = probs.argmax(axis=-1)
       probabilities.append(probs)
       pred_label = int2label[int(pred)]
