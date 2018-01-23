@@ -89,13 +89,20 @@ I experimented with log mel features but eventually just used the raw waveform d
 All packages can be installed via `pip3 install`. Other versions will probably work too. I tested it with Python 3.5.2 using Ubuntu 16.04.
 
 ### Pi requirements:
-- to run the benchmark script: only [tensorflow]() is required
+- I installed Raspbian GNU/Linux 8 (Jessie): http://downloads.raspberrypi.org/raspbian/images/raspbian-2017-07-05/ on the Pi 3.
+- to run the benchmark script only TensorFlow is required. I installed it using this tutorial: https://petewarden.com/2017/08/20/cross-compiling-tensorflow-for-the-raspberry-pi and used the Python 3.4 part:
+```
+sudo apt-get install libblas-dev liblapack-dev python-dev \
+ libatlas-base-dev gfortran python-setuptools
+sudo ​pip install \
+ http://ci.tensorflow.org/view/Nightly/job/nightly-pi-python3/lastSuccessfulBuild/artifact/output-artifacts/tensorflow-1.4.0-cp34-none-any.whl
+ ```
 
-To create the whole submission file (`make_submission_on_rpi.py`) you'll need these additional packages:
+To create the whole submission file (`make_submission_on_rpi.py`) you'll need these additional packages (`pip3 install` and I got a `HTTPError` which can be solved by using the  `--default-timeout=100` flag):
 - pandas==0.22.0
 - tqdm==4.19.5
 
-I tested it with Noobs 8 Jessie and Python 3.4.2.
+I tested it with Raspbian GNU/Linux 8 (Jessie) and Python 3.4.2.
 
 ## A3.) How To Generate the Solution
 ## Structure
@@ -159,11 +166,12 @@ To freeze the model run:
 git checkout master freeze_graph.py
 git checkout master checkpoints_195/ep-085-vl-0.2231.hdf5  # skip this if you trained the model yourself
 python3 freeze_graph.py --checkpoint_path checkpoints_195/ep-085-vl-0.2231.hdf5 --frozen_path tf_files/frozen_195.pb
-# Maybe this is not required but I get: `No op named DecodeWav in defined operations.` otherwise.
-python3 strip_unused.py --input_graph tf_files/frozen_195.pb  --output_graph tf_files/frozen_195_stripped.pb --input_node_names decoded_sample_data --output_node_names labels_softmax --input_binary True --output_binary True
 ```
 By default, the frozen graph will be saved as `tf_files/frozen.pb`. You can then reproduce the best scoring rpi submission `rpi_submission_195.csv` by running:
 ```
+# Maybe this is not required but I get: `No op named DecodeWav in defined operations.` otherwise.
+python3 strip_unused.py --input_graph tf_files/frozen_195.pb  --output_graph tf_files/frozen_195_stripped.pb --input_node_names decoded_sample_data --output_node_names labels_softmax --input_binary True --output_binary True
+
 # on the pi
 git checkout master
 python3 make_submission_on_rpi.py --frozen_graph tf_files/frozen_195_stripped.pb --test_data data/test/audio --submission_fn rpi_submission_195.csv
