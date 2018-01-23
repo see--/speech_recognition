@@ -87,6 +87,16 @@ I experimented with log mel features but eventually just used the raw waveform d
 - pandas-ml==0.5.0
 
 All packages can be installed via `pip3 install`. Other versions will probably work too. I tested it with Python 3.5.2 using Ubuntu 16.04.
+
+### Pi requirements:
+- to run the benchmark script: only [tensorflow]() is required
+
+To create the whole submission file (`make_submission_on_rpi.py`) you'll need these additional packages:
+- pandas==0.22.0
+- tqdm==4.19.5
+
+I tested it with Noobs 8 Jessie and Python 3.4.2.
+
 ## A3.) How To Generate the Solution
 ## Structure
 This repo contains all the code (`.py` or `.ipynb`) to reproduce my part of our submission. You'll find various model definitions in `model.py`, the training script is `train.py` and the scripts to make the submissions are `make_submission.py` (faster as it processes samples in batches) or `make_submission_on_rpi.py` (suitable to create the submission file on the rpi 3: frozen graph, batch size of 1 and fewer dependecies). Keras models checkpoints can be found in `checkpoints_*`, TensorBoard training logs in `logs_*` and frozen TensorFlow graphs in `tf_files`. I am providing these files for the experiments that are required for the final submission. Though, I ran many more. As a result each section of this writeup can be executed independently.
@@ -139,6 +149,7 @@ This model is trained with pseudo labels from our best ensembled submission: `su
 git checkout 4f22e26
 git checkout master submit_50_probs.uint8.memmap
 python3 create_pseudo_with_thresh.py
+mkdir checkpoints_195
 python3 train.py
 ```
 For this training I am only saving the checkpoints with the best validation accuracy. Therefore, there is no need to inspect the logs. Just use the latest checkpoint.
@@ -147,12 +158,15 @@ To freeze the model run:
 ```
 git checkout master freeze_graph.py
 git checkout master checkpoints_195/ep-085-vl-0.2231.hdf5  # skip this if you trained the model yourself
-python3 freeze_graph.py --checkpoint_path checkpoints_195/ep-085-vl-0.2231.hdf5
+python3 freeze_graph.py --checkpoint_path checkpoints_195/ep-085-vl-0.2231.hdf5 --frozen_path tf_files/frozen_195.pb
+# Maybe this is not required but I get: `No op named DecodeWav in defined operations.` otherwise.
+python3 strip_unused.py --input_graph tf_files/frozen_195.pb  --output_graph tf_files/frozen_195_stripped.pb --input_node_names decoded_sample_data --output_node_names labels_softmax --input_binary True --output_binary True
 ```
 By default, the frozen graph will be saved as `tf_files/frozen.pb`. You can then reproduce the best scoring rpi submission `rpi_submission_195.csv` by running:
 ```
-git checkout master make_submission_on_rpi.py
-python3 make_submission_on_rpi.py --frozen_graph tf_files/frozen.pb --test_data data/test/audio --submission_fn rpi_submission_195.csv
+# on the pi
+git checkout master
+python3 make_submission_on_rpi.py --frozen_graph tf_files/frozen_195_stripped.pb --test_data data/test/audio --submission_fn rpi_submission_195.csv
 ```
 This submission will have a score of 0.90825 on the private leaderboard.
 

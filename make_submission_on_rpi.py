@@ -1,4 +1,5 @@
 import tensorflow as tf
+from tf.
 import wave
 import struct
 # from scipy.io import wavfile
@@ -88,14 +89,14 @@ def main():
   int2label = {i: c for i, c in enumerate(classes)}
   load_graph(args.frozen_graph)
   data_tensor = sess.graph.get_tensor_by_name(args.data_tensor)
-  rate_tensor = sess.graph.get_tensor_by_name(args.rate_tensor)
+  # rate_tensor = sess.graph.get_tensor_by_name(args.rate_tensor)
   output_tensor = sess.graph.get_tensor_by_name(args.output_tensor)
 
   fns, wanted_labels, probabilities = [], [], []
   batch_counter = 0
   X_batch = []
 
-  for i in tqdm(range(len(test_fns[:500]))):
+  for i in tqdm(range(len(test_fns[:]))):
     test_fn = test_fns[i]
     fns.append(os.path.basename(test_fn))
     wav_data = wavfile_read(test_fn)
@@ -107,8 +108,9 @@ def main():
 
     batch_counter += 1
     if batch_counter == batch_size:
-      probs = sess.run(
-          output_tensor, {data_tensor: wav_data, rate_tensor: sample_rate})
+      probs = sess.run(output_tensor, {data_tensor: wav_data})
+      # probs = sess.run(
+      #     output_tensor, {data_tensor: wav_data, rate_tensor: sample_rate})
       pred = probs.argmax(axis=-1)
       probabilities.append(probs)
       pred_label = int2label[int(pred)]
