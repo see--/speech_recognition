@@ -29,7 +29,7 @@ Our team (team name: **Heng-Ryan-See \* good bug? \***) won the competition with
 
 
 # 2.) Summary of my approach
-I started with the provided [tutorial](https://www.tensorflow.org/versions/master/tutorials/audio_recognition) and could easily get better results by just adding momentum to the plain SGD solver. I have no prior experience with audio data and mostly used deep learning with images. For this domain you don't use features but feed the raw pixel values. My thinking was that this should also work with audio data. During the competition, I ran experiments using raw waveforms, spectrograms and log mel features as input. I got similar results using log mel and raw waveform (86%-87%) and used the waveform data for most experiments as it was easier to interpret for me.
+I started with the provided [tutorial](https://www.tensorflow.org/versions/master/tutorials/audio_recognition) and could easily get better results by just adding momentum to the plain SGD solver. I have no prior experience with audio data and mostly used deep learning with images. For this domain you don't use features but feed the raw pixel values. My thinking was that this should also work with audio data. During the competition, I ran experiments using raw waveforms, spectrograms and log mel features as input. I got similar results using log mel and raw waveform (86%-87%) and used the waveform data for most experiments as it was easier to interpret.
 
 For the special price the restrictions were: the network is smaller than 5.000.000 bytes and runs in less than 175ms per sample on a stock Raspberry Pi 3. Regarding the size, this allows you to build networks that have roughly 1.250.000 weight parameters. So by experimenting with these restrictions I came up with an architecture that uses Depthwise1D convolutions on the raw waveform. Using [model distillation](https://arxiv.org/pdf/1503.02531.pdf) this network predicts the correct class for 90.8% of the private leaderboard samples and runs in roughly 80ms. Training the the model takes ~4 hours using a Google Cloud instance with K80 GPU.
 
@@ -89,7 +89,7 @@ I experimented with log mel features but eventually just used the raw waveform d
 All packages can be installed via `pip3 install`. Other versions will probably work too. I tested it with Python 3.5.2 using Ubuntu 16.04.
 
 ### Pi requirements:
-- I installed Raspbian GNU/Linux 8 (Jessie): http://downloads.raspberrypi.org/raspbian/images/raspbian-2017-07-05/ on the Pi 3.
+- GNU/Linux 8 (Jessie): http://downloads.raspberrypi.org/raspbian/images/raspbian-2017-07-05
 - to run the benchmark script only TensorFlow is required. I installed it using this tutorial: https://petewarden.com/2017/08/20/cross-compiling-tensorflow-for-the-raspberry-pi and used the Python 3.4 part:
 ```
 sudo apt-get install libblas-dev liblapack-dev python-dev \
@@ -108,7 +108,7 @@ I tested it with Raspbian GNU/Linux 8 (Jessie) and Python 3.4.2.
 
 ## A3.) How To Generate the Solution
 ## Structure
-This repo contains all the code (`.py` or `.ipynb`) to reproduce my part of our submission. You'll find various model definitions in `model.py`, the training script is `train.py` and the scripts to make the submissions are `make_submission.py` (faster as it processes samples in batches) or `make_submission_on_rpi.py` (suitable to create the submission file on the rpi 3: frozen graph, batch size of 1 and fewer dependecies). Keras models checkpoints can be found in `checkpoints_*`, TensorBoard training logs in `logs_*` and frozen TensorFlow graphs in `tf_files`. I am providing these files for the experiments that are required for the final submission. Though, I ran many more. As a result each section of this writeup can be executed independently.
+This repo contains all the code (`.py` or `.ipynb`) to reproduce my part of our submission. You'll find various model definitions in `model.py`, the training script is `train.py` and the scripts to make the submissions are `make_submission.py` (faster as it processes samples in batches) or `make_submission_on_rpi.py` (suitable to create the submission file on the Pi 3: frozen graph, batch size of 1 and fewer dependecies). Keras models checkpoints can be found in `checkpoints_*`, TensorBoard training logs in `logs_*` and frozen TensorFlow graphs in `tf_files`. I am providing these files for the experiments that are required for the final submission. Though, I ran many more. As a result each section of this writeup can be executed independently.
 The data is assumed to be in `data/train` and `data/test`:
 ```
 mkdir data
@@ -169,7 +169,7 @@ git checkout master freeze_graph.py
 git checkout master checkpoints_195/ep-085-vl-0.2231.hdf5  # skip this if you trained the model yourself
 python3 freeze_graph.py --checkpoint_path checkpoints_195/ep-085-vl-0.2231.hdf5 --frozen_path tf_files/frozen_195.pb
 ```
-By default, the frozen graph will be saved as `tf_files/frozen.pb`. You can then reproduce the best scoring rpi submission `rpi_submission_195.csv` by running:
+You can then reproduce the best scoring Raspberry Pi submission `rpi_submission_195.csv` by running:
 ```
 # on the pi
 git checkout master
