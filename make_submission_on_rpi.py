@@ -1,5 +1,4 @@
 import tensorflow as tf
-from tf.
 import wave
 import struct
 # from scipy.io import wavfile
@@ -84,7 +83,7 @@ def main():
   args, unparsed = parser.parse_known_args()
   test_fns = sorted(glob(os.path.join(args.test_data, '*.wav')))
   sess = tf.Session()
-  sample_rate = 16000
+  # sample_rate = 16000
   classes = '_silence_ _unknown_ sheila nine stop bed four six down bird marvin cat off right seven eight up three happy go zero on wow dog yes five one tree house two left no'.split() # noqa
   int2label = {i: c for i, c in enumerate(classes)}
   load_graph(args.frozen_graph)
