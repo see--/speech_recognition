@@ -145,7 +145,7 @@ git checkout master checkpoints_106/ep-062-vl-0.1815.hdf5  # change line 64 of `
 python3 make_submission.py
 ```
 
-The resulting submission will have a private/public score of 0.88558/0.88349. Every sample is used three times (unchanged, shifted to the left by 1500 timesteps and made louder by multiplying with 1.2). The resulting probabilities are then averaged. Note that this model uses 32 classes. These probabilities will be stored in `REPR_submission_106_tta_leftloud_all_labels_probs.csv`. In order to use them for the ensembled model the order of the samples and the probabilities have to be converted to 12 classes:
+The resulting submission (`REPR_submission_106_tta_leftloud.csv`) will have a private/public score of 0.88558/0.88349. Every sample is used three times (unchanged, shifted to the left by 1500 timesteps and made louder by multiplying with 1.2). The resulting probabilities are then averaged. Note that this model uses 32 classes. These probabilities will be stored in `REPR_submission_106_tta_leftloud_all_labels_probs.csv`. In order to use them for the ensembled model the order of the samples and the probabilities have to be converted to 12 classes:
 ```
 git checkout master convert_from_see_v3_bugfix.py
 python3 convert_from_see_v3_bugfix.py
@@ -155,8 +155,8 @@ This will create the file: `submission_106_tta_leftloud_all_labels_probs.uint8.m
 ## Raspberry Pi model
 This model is trained with pseudo labels from our best ensembled submission: `submit_50_probs.uint8.memmap`. To train this model, first reproduce the pseudo labels using this submission and then run the training script:
 ```
-git checkout 4f22e26
-git checkout master submit_50_probs.uint8.memmap
+git checkout ad2af0d
+git checkout master create_pseudo_with_thresh.py submit_50_probs.uint8.memmap
 python3 create_pseudo_with_thresh.py
 mkdir checkpoints_195
 python3 train.py
