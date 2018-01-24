@@ -153,10 +153,10 @@ python3 convert_from_see_v3_bugfix.py
 This will create the file: `submission_106_tta_leftloud_all_labels_probs.uint8.memmap` for our ensemble model.
 
 ## Raspberry Pi model
-This model is trained with pseudo labels from our best ensembled submission: `submit_50_probs.uint8.memmap`. To train this model, first reproduce the pseudo labels using this submission and then run the training script:
+This model is trained with pseudo labels from our best ensembled submission: `submission_50.csv`/`submit_50_probs.uint8.memmap`. To train this model, first reproduce the pseudo labels using this submission and then run the training script:
 ```
 git checkout ad2af0d
-git checkout master create_pseudo_with_thresh.py submit_50_probs.uint8.memmap
+git checkout master create_pseudo_with_thresh.py submission_50.csv submit_50_probs.uint8.memmap
 python3 create_pseudo_with_thresh.py
 mkdir checkpoints_195
 python3 train.py
