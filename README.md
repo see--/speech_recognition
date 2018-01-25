@@ -24,7 +24,7 @@ For the special price the restrictions were: the network is smaller than 5.000.0
 - Cyclic learning rate schedules: The winning entry of the [Caravana Image Masking Challenge](http://blog.kaggle.com/2017/12/22/carvana-image-masking-first-place-interview/) used cyclic learning rates but for me the results got worse and you had additional hyperparameters. Maybe I just didn't implement it correctly.
 
 ## What worked
-- Mixing tensorflow and Keras: Both frameworks work perfectly together and you can mix them wherever you want. For example: I wrapped the provided data AudioProcessor from `input_data.py` in a generator and used it with `keras.models.Model.fit_generator`. This way, I could implement new architectures really fast using Keras and later just extract and freeze the graph from the trained models (see `freeze_graph.py`).
+- Mixing TensorFlow and Keras: Both frameworks work perfectly together and you can mix them wherever you want. For example: I wrapped the provided data AudioProcessor from `input_data.py` in a generator and used it with `keras.models.Model.fit_generator`. This way, I could implement new architectures really fast using Keras and later just extract and freeze the graph from the trained models (see `freeze_graph.py`).
 
 - Pseudo labeling: I used consistent samples from the test set to train new networks. Choosing them was based on a.) my three best models agree on this submission. I used this version at early stages of the competition. b.) using a probability threshold on the predicted softmax probabilities. Typically, using `pseudo_threshold=0.6` were the samples that our ensembled model predicted correctly. I also implemented a schedule for pseudo labels. That is: For the first 5 epochs you only use pseudo labels and then gradually mix in data from the training data set. Though, I didn't have time to run these experiments, so I kept a fixed ratio of training and pseudo data.
 
@@ -44,7 +44,7 @@ For the special price the restrictions were: the network is smaller than 5.000.0
 
 ## A2.) Requirements:
 - tensorflow-gpu==1.4.0 
-- Keras==2.1.2 (the version that comes with tensorflow `2.0.8-tf` should be fine as well but you'll need to adjust the imports)
+- Keras==2.1.2 (the version that comes with TensorFlow `2.0.8-tf` should be fine as well but you'll need to adjust the imports)
 - tqdm==4.11.2
 - scipy==1.0.0
 - numpy==1.13.3
