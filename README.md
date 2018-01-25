@@ -8,27 +8,7 @@ Our team (team name: **Heng-Ryan-See \* good bug? \***) won the competition with
 - [Ryan Sun](https://www.kaggle.com/ryansun)
 - [Steffen Eberbach](https://www.kaggle.com/seesee)
 
-# Contact
-- Name: Steffen Eberbach
-- Location: Germany
-- Email: steffenebe@gmail.com
-
-# 1.) Background
-- What your academic/professional background?
-  - I studied at the Karlsruhe Institute of Technology with a focus on robotics & computer vision and prepared my master's thesis at Daimler's image understanding group.
-- Did you have any prior experience that helped you succeed in this competition?
-  - I already used deep learning for my master's thesis. Knowing the commonly used terms and how to interpret the learning curves helped a lot.
-- What made you decide to enter this competition?
-  - It was a nice way to learn something new. It was not specifically speech recognition but I wanted to use TensorFlow/Keras more anyway and the competition seemed like a good project to apply both frameworks.
-- How much time did you spend on the competition?
-  - Way too much :P. I needed some time to get started with audio (i.e. understanding mel features and audio representations). Then I spent (too much) time developing new network architectures. Finally, the last week and writeup took really long as well.
-- If part of a team, how did you decide to team up?
-  - I was somewhat stuck at 88% public leaderboard score and decided to team up. I saw that Heng did some great progression on the leaderboard and wrote him a message.
-- If you competed as part of a team, who did what?
-  - We discussed most problems in the group but everyone had a focus. Heng did all the ensembling. Ryan retrained his models with pseudo labeling and my focus was on the special price.
-
-
-# 2.) Summary of my approach
+# Summary of my approach
 I started with the provided [tutorial](https://www.tensorflow.org/versions/master/tutorials/audio_recognition) and could easily get better results by just adding momentum to the plain SGD solver. I have no prior experience with audio data and mostly used deep learning with images. For this domain you don't use features but feed the raw pixel values. My thinking was that this should also work with audio data. During the competition, I ran experiments using raw waveforms, spectrograms and log mel features as input. I got similar results using log mel and raw waveform (86%-87%) and used the waveform data for most experiments as it was easier to interpret.
 
 For the special price the restrictions were: the network is smaller than 5.000.000 bytes and runs in less than 175ms per sample on a stock Raspberry Pi 3. Regarding the size, this allows you to build networks that have roughly 1.250.000 weight parameters. So by experimenting with these restrictions I came up with an architecture that uses Depthwise1D convolutions on the raw waveform. Using [model distillation](https://arxiv.org/pdf/1503.02531.pdf) this network predicts the correct class for 90.8% of the private leaderboard samples and runs in roughly 60ms. Training the model takes ~4 hours using a Google Cloud instance with K80 GPU.
@@ -49,21 +29,6 @@ For the special price the restrictions were: the network is smaller than 5.000.0
 - Pseudo labeling: I used consistent samples from the test set to train new networks. Choosing them was based on a.) my three best models agree on this submission. I used this version at early stages of the competition. b.) using a probability threshold on the predicted softmax probabilities. Typically, using `pseudo_threshold=0.6` were the samples that our ensembled model predicted correctly. I also implemented a schedule for pseudo labels. That is: For the first 5 epochs you only use pseudo labels and then gradually mix in data from the training data set. Though, I didn't have time to run these experiments, so I kept a fixed ratio of training and pseudo data.
 
 - Test time augmentation (TTA): It is a simple way to get some boost. Just augment the samples, feed them multiple times and average the probabilities. I tried the following: time-shifting, increase/decrease the volume and time-stretching using `librosa.effects.time_stretch`.
-
-# 3.) Feature Selection
-I experimented with log mel features but eventually just used the raw waveform data.
-
-# 4.) Training Method
-- What training methods did you use?
-  - I used SGD and its variants: Adam, Nadam and RMSprop. RMSprop worked best for me.
-- Did you ensemble the models?
-  - I think this was the most important part. Our single models were all in the range of 86%-88% accuracy on the public leaderboard. Using an ensemble of these models got us to 90%.
-- If you did ensemble, how did you weight the different models?
-  - Mostly based on the single model performance and by leaderboard score. We even had a typo (wrong filename) which caused one model to have twice the weight it should have. We used this submission as our final (winning) submission. Actually, Ryan proposed better ensemble weights that yielded 0.91107 on the private leaderboard.
-
-# 5.) Interesting findings
-- What do you think set you apart from others in the competition?
-  - Ensembling the models and the heavy use of pseudo labeling. Using this approach, we could incrementally get a better model.
 
 # Appendix
 ##  A1.) Model Execution Time
@@ -107,7 +72,7 @@ Note that installing scipy will take a couple hours. I tried removing this depen
 I tested it with Raspbian GNU/Linux 8 (Jessie) and Python 3.4.2.
 
 ## A3.) How To Generate the Solution
-## Structure
+### Structure
 This repo contains all the code (`.py` or `.ipynb`) to reproduce my part of our submission. You'll find various model definitions in `model.py`, the training script is `train.py` and the scripts to make the submissions are `make_submission.py` (faster as it processes samples in batches) or `make_submission_on_rpi.py` (suitable to create the submission file on the Pi 3: frozen graph, batch size of 1 and fewer dependecies). Keras models checkpoints can be found in `checkpoints_*`, TensorBoard training logs in `logs_*` and frozen TensorFlow graphs in `tf_files`. I am providing these files for the experiments that are required for the final submission. Though, I ran many more. As a result each section of this writeup can be executed independently.
 The data is assumed to be in `data/train` and `data/test`:
 ```
