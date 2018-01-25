@@ -1,9 +1,10 @@
 import tensorflow as tf
+from tensorflow.python.framework.errors_impl import NotFoundError
 # comment December 11, 2017 at 12:11 am:
 # https://petewarden.com/2017/08/20/cross-compiling-tensorflow-for-the-raspberry-pi
 try:
   from tensorflow.contrib.framework.python.ops import audio_ops as contrib_audio  # noqa
-except ImportError:
+except NotFoundError:
   from tensorflow.python.ops.gen_audio_ops import *  # noqa
 from scipy.io import wavfile as wf
 from glob import glob
@@ -88,7 +89,7 @@ def main():
   batch_counter = 0
   X_batch = []
 
-  for i in tqdm(range(len(test_fns[:]))):
+  for i in tqdm(range(len(test_fns))[:]):
     test_fn = test_fns[i]
     fns.append(os.path.basename(test_fn))
     rate, wav_data = wf.read(test_fn)

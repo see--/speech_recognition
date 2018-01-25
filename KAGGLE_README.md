@@ -31,7 +31,7 @@ Our team (team name: **Heng-Ryan-See \* good bug? \***) won the competition with
 # 2.) Summary of my approach
 I started with the provided [tutorial](https://www.tensorflow.org/versions/master/tutorials/audio_recognition) and could easily get better results by just adding momentum to the plain SGD solver. I have no prior experience with audio data and mostly used deep learning with images. For this domain you don't use features but feed the raw pixel values. My thinking was that this should also work with audio data. During the competition, I ran experiments using raw waveforms, spectrograms and log mel features as input. I got similar results using log mel and raw waveform (86%-87%) and used the waveform data for most experiments as it was easier to interpret.
 
-For the special price the restrictions were: the network is smaller than 5.000.000 bytes and runs in less than 175ms per sample on a stock Raspberry Pi 3. Regarding the size, this allows you to build networks that have roughly 1.250.000 weight parameters. So by experimenting with these restrictions I came up with an architecture that uses Depthwise1D convolutions on the raw waveform. Using [model distillation](https://arxiv.org/pdf/1503.02531.pdf) this network predicts the correct class for 90.8% of the private leaderboard samples and runs in roughly 60ms. Training the model takes ~4 hours using a Google Cloud instance with K80 GPU.
+For the special price the restrictions were: the network is smaller than 5.000.000 bytes and runs in less than 175ms per sample on a stock Raspberry Pi 3. Regarding the size, this allows you to build networks that have roughly 1.250.000 weight parameters. So by experimenting with these restrictions I came up with an architecture that uses Depthwise1D convolutions on the raw waveform. Using [model distillation](https://arxiv.org/pdf/1503.02531.pdf) this network predicts the correct class for 90.8% of the private leaderboard samples and runs in roughly 80ms. Training the the model takes ~4 hours using a Google Cloud instance with K80 GPU.
 
 ## What didn't work
 
@@ -75,7 +75,7 @@ I experimented with log mel features but eventually just used the raw waveform d
 - How long does it take to train your model?
   - ~4-8 hours (depends on the model) for a single model
 - How long does it take to generate predictions using your model?
-  - ~4 minutes without TTA, on the Pi 3 (`make_submission_on_rpi.py`) it takes ~134 minutes
+  - ~4 minutes without TTA
 
 ## A2.) Requirements:
 - tensorflow-gpu==1.4.0 
@@ -183,10 +183,9 @@ You can benchmark the frozen graph using the provided benchmark binary:
 ```
 curl -O https://storage.googleapis.com/download.tensorflow.org/deps/pi/2017_10_07/benchmark_model
 chmod +x benchmark_model
-./benchmark_model --graph=tf_files/frozen_195.pb --input_layer="decoded_sample_data:0,decoded_sample_data:1" --input_layer_shape="16000,1:" --input_layer_type="float,int32" --input_layer_values=":16000" --output_layer="labels_softmax:0" --show_run_order=false --show_time=false --show_memory=false --show_summary=true --show_flops=true
-```
+./benchmark_model --graph=tf_files/frozen.pb --input_layer="decoded_sample_data:0,decoded_sample_data:1" --input_layer_shape="16000,1:" --input_layer_type="float,int32" --input_layer_values=":16000" --output_layer="labels_softmax:0" --show_run_order=false --show_time=false --show_memory=false --show_summary=true --show_flops=true```
 
 I got the following results:
 - avg time (ms): 58.042
 - max memory (bytes): 2180436
-- size (bytes): 4870144 (`du -s -B1 tf_files/frozen_195.pb`)
+- size (bytes): 4870144 (`du -s -B1 tf_files/frozen.pb`)
