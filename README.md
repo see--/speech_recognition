@@ -175,7 +175,7 @@ You can then reproduce the best scoring Raspberry Pi submission `rpi_submission_
 git checkout master
 python3 make_submission_on_rpi.py --frozen_graph tf_files/frozen_195.pb --test_data data/test/audio --submission_fn rpi_submission_195.csv
 ```
-This submission will have a score of 0.90825 on the private leaderboard.
+This submission will have a score of 0.89747/0.90825 on the public/private leaderboard.
 
 ## Benchmarking the Pi model
 You can benchmark the frozen graph using the provided benchmark binary:
